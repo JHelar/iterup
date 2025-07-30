@@ -1,0 +1,13 @@
+{
+  "name": "@jhel/iterup",
+  "module": "main.ts",
+  "type": "module",
+  "version": "0.0.1",
+  "exports": "./main.ts",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
