@@ -8,9 +8,11 @@ type MapFunction<Value, FilterValue> = (
   index: number
 ) => Option<FilterValue>;
 
-type OverridenFunctions = "toArray";
-
-type Iterup<Value> = Omit<ArrayIterator<Value>, OverridenFunctions> & {
+type Iterup<Value> = Omit<ArrayIterator<Value>, Excludes> & {
+  [K in Overrides]: (
+    ...args: Parameters<ArrayIterator<Value>[K]>
+  ) => Iterup<Value>;
+} & {
   filterMap<FilterValue>(
     f: MapFunction<Value, FilterValue>
   ): Iterup<FilterValue>;
@@ -27,7 +29,7 @@ type Iterup<Value> = Omit<ArrayIterator<Value>, OverridenFunctions> & {
 
 function enumerate<Value>(this: ArrayIterator<Value>) {
   const generator = function* (iterator: ArrayIterator<Value>) {
-    let index = -1;
+    let index = 0;
     for (const value of iterator) {
       yield [value, index++] as [Value, number];
     }
@@ -40,9 +42,8 @@ function filterFind<FilterValue, Value>(
   this: ArrayIterator<Value>,
   f: (value: Value, index: number) => Option<FilterValue>
 ) {
-  let index = -1;
-  for (const value of enumerate.apply(this)) {
-    const newValue = f(value as Value, index++);
+  for (const [value, index] of enumerate.apply(this)) {
+    const newValue = f(value as Value, index);
     if (newValue === None) continue;
     return newValue;
   }
@@ -81,6 +82,18 @@ const Extensions = {
   toArray: collect,
 } as const;
 
+const Overrides = new Set(["map"] as const);
+type Overrides = typeof Overrides extends Set<infer O> ? O : never;
+type Excludes = Overrides | "toArray";
+
+function isIterator<Value>(value: unknown): value is ArrayIterator<Value> {
+  if (typeof value !== "object") return false;
+  if (value === null) return false;
+  return (
+    Symbol.iterator in value && typeof value[Symbol.iterator] === "function"
+  );
+}
+
 function fromIterator<Value>(iterator: ArrayIterator<Value>): Iterup<Value> {
   const proxy = new Proxy(iterator, {
     get(target, prop) {
@@ -94,7 +107,11 @@ function fromIterator<Value>(iterator: ArrayIterator<Value>): Iterup<Value> {
       const value = target[prop as keyof typeof target];
       if (value instanceof Function) {
         return function (...args: any[]) {
-          return value.apply(target, args);
+          const func = value.apply(target, args);
+          if (Overrides.has(prop as Overrides) && isIterator(func)) {
+            return fromIterator(func);
+          }
+          return func;
         };
       }
       return value;

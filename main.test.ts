@@ -38,7 +38,15 @@ describe("filterFind", () => {
   });
 });
 
-describe("enumerate", () => {});
+describe("enumerate", () => {
+  test("should return array with index starting at 0", () => {
+    const collection = iterup([1, 2, 3])
+      .enumerate()
+      .filterMap(([, index]) => index)
+      .collect();
+    expect(collection).toEqual([0, 1, 2]);
+  });
+});
 
 describe("overriden", () => {
   test("toArray maps to collect", () => {
@@ -46,8 +54,8 @@ describe("overriden", () => {
     expect(collection.toArray()).toEqual([10, 2, 30]);
   });
 
-  // test("map should return iterup iterator", () => {
-  //   const collection = iterup([10, 2, 30]);
-  //   expect(collection.map((value) => value).filterMap).toBeDefined();
-  // });
+  test("map should return iterup instance", () => {
+    const collection = iterup([10, 2, 30]);
+    expect(collection.map((value) => value).filterMap).toBeDefined();
+  });
 });
