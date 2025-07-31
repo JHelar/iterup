@@ -1,5 +1,6 @@
 import { expect, test, describe } from "bun:test";
-import { isIterup, iterup, None } from "./main";
+import { iterup, None } from "./main";
+import { isIterup } from "./utils";
 
 describe("filterMap", () => {
   test("should filter values", () => {
