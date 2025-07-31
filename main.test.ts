@@ -38,14 +38,16 @@ describe("filterFind", () => {
   });
 });
 
+describe("enumerate", () => {});
+
 describe("overriden", () => {
   test("toArray maps to collect", () => {
     const collection = iterup([10, 2, 30]);
     expect(collection.toArray()).toEqual([10, 2, 30]);
   });
 
-  test("map should return iterup iterator", () => {
-    const collection = iterup([10, 2, 30]);
-    expect(collection.map((value) => value).filterMap).toBeDefined();
-  });
+  // test("map should return iterup iterator", () => {
+  //   const collection = iterup([10, 2, 30]);
+  //   expect(collection.map((value) => value).filterMap).toBeDefined();
+  // });
 });

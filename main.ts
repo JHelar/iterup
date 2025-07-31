@@ -19,17 +19,30 @@ type Iterup<Value> = Omit<ArrayIterator<Value>, OverridenFunctions> & {
     f: MapFunction<Value, FilterValue>
   ): FilterValue | undefined;
 
+  enumerate(): Iterup<[Value, number]>;
+
   collect(): Array<Value>;
   toArray(): Array<Value>;
 };
+
+function enumerate<Value>(this: ArrayIterator<Value>) {
+  const generator = function* (iterator: ArrayIterator<Value>) {
+    let index = -1;
+    for (const value of iterator) {
+      yield [value, index++] as [Value, number];
+    }
+  };
+
+  return fromIterator(generator(this) as ArrayIterator<[Value, number]>);
+}
 
 function filterFind<FilterValue, Value>(
   this: ArrayIterator<Value>,
   f: (value: Value, index: number) => Option<FilterValue>
 ) {
   let index = -1;
-  for (const value of this) {
-    const newValue = f(value, index++);
+  for (const value of enumerate.apply(this)) {
+    const newValue = f(value as Value, index++);
     if (newValue === None) continue;
     return newValue;
   }
@@ -40,9 +53,8 @@ function filterMap<FilterValue, Value>(
   f: (value: Value, index: number) => Option<FilterValue>
 ) {
   const generator = function* (iterator: ArrayIterator<Value>) {
-    let index = -1;
-    for (const value of iterator) {
-      const newValue = f(value, index++);
+    for (const [value, index] of enumerate.apply(iterator)) {
+      const newValue = f(value as Value, index);
       if (newValue === None) continue;
       yield newValue;
     }
@@ -61,41 +73,28 @@ function collect<Value>(this: ArrayIterator<Value>): Array<Value> {
   return array;
 }
 
+const Extensions = {
+  [filterMap.name]: filterMap,
+  [filterFind.name]: filterFind,
+  [collect.name]: collect,
+  [enumerate.name]: enumerate,
+  toArray: collect,
+} as const;
+
 function fromIterator<Value>(iterator: ArrayIterator<Value>): Iterup<Value> {
   const proxy = new Proxy(iterator, {
     get(target, prop) {
-      if (prop === filterMap.name) {
+      if (prop in Extensions) {
+        const extensionKey = prop as keyof typeof Extensions;
         return function (...args: Parameters<typeof filterMap>) {
-          return filterMap.apply(target, args);
+          return Extensions[extensionKey]?.apply(target, args);
         };
       }
 
-      if (prop === filterFind.name) {
-        return function (...args: Parameters<typeof filterFind>) {
-          return filterFind.apply(target, args);
-        };
-      }
-
-      if (prop === collect.name) {
-        return function (...args: Parameters<typeof collect>) {
-          return collect.apply(target, args);
-        };
-      }
-
-      if (prop === "toArray") {
-        return function (...args: Parameters<typeof collect>) {
-          return collect.apply(target, args);
-        };
-      }
-
-      const value = target[prop];
+      const value = target[prop as keyof typeof target];
       if (value instanceof Function) {
-        return function (...args) {
-          const func = value.apply(target, args);
-          if (prop === "map") {
-            return fromIterator(func);
-          }
-          return func;
+        return function (...args: any[]) {
+          return value.apply(target, args);
         };
       }
       return value;
