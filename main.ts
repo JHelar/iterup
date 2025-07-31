@@ -1,24 +1,77 @@
 export const None: unique symbol = Symbol("None");
+const IterupID: unique symbol = Symbol("Iterup");
 type None = typeof None;
 
 type Option<T> = None | T;
 
-type MapFunction<Value, FilterValue> = (
+type FilterFunction<Value, FilterValue> = (
   value: Value,
   index: number
 ) => Option<FilterValue>;
 
-type Iterup<Value> = Omit<ArrayIterator<Value>, Excludes> & {
-  [K in Overrides]: (
-    ...args: Parameters<ArrayIterator<Value>[K]>
-  ) => Iterup<Value>;
-} & {
+type Iterup<Value> = Omit<
+  IteratorObject<Value, undefined, unknown>,
+  Excludes<Value>
+> &
+  Overrides<Value> &
+  Extensions<Value> & {
+    [IterupID]: {};
+  };
+
+export function enumerate<Value>(
+  iterator: IteratorObject<Value, undefined, unknown>
+) {
+  const generator = function* () {
+    let index = 0;
+    for (const value of iterator) {
+      yield [value, index++] as [Value, number];
+    }
+    return undefined;
+  };
+
+  return fromIterator(generator());
+}
+
+export function findMap<FilterValue, Value>(
+  iterator: IteratorObject<Value, undefined, unknown>,
+  f: (value: Value, index: number) => Option<FilterValue>
+) {
+  for (const [value, index] of enumerate(iterator)) {
+    const newValue = f(value, index);
+    if (newValue === None) continue;
+    return newValue;
+  }
+}
+
+export function filterMap<FilterValue, Value>(
+  iterator: IteratorObject<Value, undefined, unknown>,
+  f: (value: Value, index: number) => Option<FilterValue>
+) {
+  const generator = function* () {
+    for (const [value, index] of enumerate(iterator)) {
+      const newValue = f(value as Value, index);
+      if (newValue === None) continue;
+      yield newValue;
+    }
+    return undefined;
+  };
+
+  return fromIterator(generator());
+}
+
+export function collect<Value>(
+  iterator: IteratorObject<Value, undefined, unknown>
+): Array<Value> {
+  return iterator.toArray();
+}
+
+type Extensions<Value> = {
   filterMap<FilterValue>(
-    f: MapFunction<Value, FilterValue>
+    f: FilterFunction<Value, FilterValue>
   ): Iterup<FilterValue>;
 
-  filterFind<FilterValue>(
-    f: MapFunction<Value, FilterValue>
+  findMap<FilterValue>(
+    f: FilterFunction<Value, FilterValue>
   ): FilterValue | undefined;
 
   enumerate(): Iterup<[Value, number]>;
@@ -27,66 +80,41 @@ type Iterup<Value> = Omit<ArrayIterator<Value>, Excludes> & {
   toArray(): Array<Value>;
 };
 
-function enumerate<Value>(this: ArrayIterator<Value>) {
-  const generator = function* (iterator: ArrayIterator<Value>) {
-    let index = 0;
-    for (const value of iterator) {
-      yield [value, index++] as [Value, number];
-    }
-  };
-
-  return fromIterator(generator(this) as ArrayIterator<[Value, number]>);
-}
-
-function filterFind<FilterValue, Value>(
-  this: ArrayIterator<Value>,
-  f: (value: Value, index: number) => Option<FilterValue>
-) {
-  for (const [value, index] of enumerate.apply(this)) {
-    const newValue = f(value as Value, index);
-    if (newValue === None) continue;
-    return newValue;
-  }
-}
-
-function filterMap<FilterValue, Value>(
-  this: ArrayIterator<Value>,
-  f: (value: Value, index: number) => Option<FilterValue>
-) {
-  const generator = function* (iterator: ArrayIterator<Value>) {
-    for (const [value, index] of enumerate.apply(iterator)) {
-      const newValue = f(value as Value, index);
-      if (newValue === None) continue;
-      yield newValue;
-    }
-  };
-
-  return fromIterator(generator(this) as ArrayIterator<[number, FilterValue]>);
-}
-
-function collect<Value>(this: ArrayIterator<Value>): Array<Value> {
-  const array: Array<Value> = [];
-
-  for (const value of this) {
-    array.push(value);
-  }
-
-  return array;
-}
-
 const Extensions = {
   [filterMap.name]: filterMap,
-  [filterFind.name]: filterFind,
+  [findMap.name]: findMap,
   [collect.name]: collect,
   [enumerate.name]: enumerate,
-  toArray: collect,
 } as const;
 
-const Overrides = new Set(["map"] as const);
-type Overrides = typeof Overrides extends Set<infer O> ? O : never;
-type Excludes = Overrides | "toArray";
+type Overrides<Value> = {
+  map: <MapValue>(
+    f: (value: Value, index: number) => MapValue
+  ) => Iterup<MapValue>;
+  filter: <FilterValue extends Value>(
+    f: (value: Value, index: number) => value is FilterValue
+  ) => Iterup<FilterValue>;
+  flatMap: <MapValue>(
+    f: (
+      value: Value,
+      index: number
+    ) =>
+      | Iterable<MapValue, unknown, undefined>
+      | Iterator<MapValue, unknown, undefined>
+  ) => Iterup<MapValue>;
+};
+type OverrideFunctions<Value> = keyof Overrides<Value>;
+const OverrideFunctions = new Set<OverrideFunctions<{}>>([
+  "map",
+  "filter",
+  "flatMap",
+]);
 
-function isIterator<Value>(value: unknown): value is ArrayIterator<Value> {
+type Excludes<Value> = OverrideFunctions<Value> | "toArray";
+
+export function isIterator<Value>(
+  value: unknown
+): value is IteratorObject<Value, undefined, unknown> {
   if (typeof value !== "object") return false;
   if (value === null) return false;
   return (
@@ -94,21 +122,32 @@ function isIterator<Value>(value: unknown): value is ArrayIterator<Value> {
   );
 }
 
-function fromIterator<Value>(iterator: ArrayIterator<Value>): Iterup<Value> {
+export function isIterup<Value>(
+  value: IteratorObject<Value, undefined, unknown>
+): value is Iterup<Value> {
+  return IterupID in value;
+}
+
+function fromIterator<Value>(
+  iterator: IteratorObject<Value, undefined, unknown>
+): Iterup<Value> {
   const proxy = new Proxy(iterator, {
-    get(target, prop) {
-      if (prop in Extensions) {
-        const extensionKey = prop as keyof typeof Extensions;
-        return function (...args: Parameters<typeof filterMap>) {
-          return Extensions[extensionKey]?.apply(target, args);
+    get(target, prop, receiver) {
+      const extension = Extensions[prop as keyof typeof Extensions];
+      if (extension) {
+        return function (...args: any[]) {
+          return extension.apply(null, [target, ...args] as any);
         };
       }
 
       const value = target[prop as keyof typeof target];
       if (value instanceof Function) {
-        return function (...args: any[]) {
-          const func = value.apply(target, args);
-          if (Overrides.has(prop as Overrides) && isIterator(func)) {
+        return function (this: any, ...args: any[]) {
+          const func = (value as any).apply(
+            this === receiver ? target : this,
+            args
+          );
+          if (OverrideFunctions.has(prop as OverrideFunctions<Value>)) {
             return fromIterator(func);
           }
           return func;
@@ -117,19 +156,26 @@ function fromIterator<Value>(iterator: ArrayIterator<Value>): Iterup<Value> {
       return value;
     },
   });
+  Object.defineProperty(proxy, IterupID, {});
 
   return proxy as Iterup<Value>;
 }
 
-function fromArray<Value>(array: Array<Value>): Iterup<Value> {
+function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
   const iterator = function* () {
     for (const value of array) {
       yield value;
     }
+    return undefined;
   };
-  return fromIterator(iterator() as ArrayIterator<Value>);
+  return fromIterator(iterator());
 }
 
-export function iterup<Value>(collection: Array<Value>): Iterup<Value> {
-  return fromArray(collection);
+export function iterup<Value>(
+  collection: Iterable<Value> | IteratorObject<Value, undefined, unknown>
+): Iterup<Value> {
+  if (isIterator(collection)) {
+    return fromIterator(collection);
+  }
+  return fromIterable(collection);
 }

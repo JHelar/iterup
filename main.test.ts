@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { iterup, None } from "./main";
+import { isIterup, iterup, None } from "./main";
 
 describe("filterMap", () => {
   test("should filter values", () => {
@@ -21,11 +21,11 @@ describe("filterMap", () => {
   });
 });
 
-describe("filterFind", () => {
+describe("findMap", () => {
   test("should return undefined if no value found", () => {
     const collection = iterup([10, 2, 30]);
     expect(
-      collection.filterFind((value) => (value < 0 ? value : None))
+      collection.findMap((value) => (value < 0 ? value : None))
     ).toBeUndefined();
   });
 
@@ -33,7 +33,7 @@ describe("filterFind", () => {
     const collection = iterup([10, 2, 30]);
 
     expect(
-      collection.filterFind((value) => (value === 10 ? "Its a 10" : None))
+      collection.findMap((value) => (value === 10 ? "Its a 10" : None))
     ).toBe("Its a 10");
   });
 });
@@ -42,20 +42,29 @@ describe("enumerate", () => {
   test("should return array with index starting at 0", () => {
     const collection = iterup([1, 2, 3])
       .enumerate()
-      .filterMap(([, index]) => index)
+      .map(([, index]) => index)
       .collect();
     expect(collection).toEqual([0, 1, 2]);
   });
 });
 
 describe("overriden", () => {
-  test("toArray maps to collect", () => {
-    const collection = iterup([10, 2, 30]);
-    expect(collection.toArray()).toEqual([10, 2, 30]);
-  });
-
   test("map should return iterup instance", () => {
     const collection = iterup([10, 2, 30]);
-    expect(collection.map((value) => value).filterMap).toBeDefined();
+    expect(isIterup(collection.map((value) => value))).toBeTrue();
+  });
+
+  test("filter should return iterup instance", () => {
+    const collection = iterup([10, undefined, 30]);
+    expect(
+      isIterup(collection.filter((value) => value !== undefined))
+    ).toBeTrue();
+  });
+
+  test("flatMap should return iterup instance", () => {
+    const collection = iterup([10, undefined, 30]);
+    expect(
+      isIterup(collection.flatMap((value) => ["Value" + value]))
+    ).toBeTrue();
   });
 });
