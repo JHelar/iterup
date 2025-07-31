@@ -1,0 +1,20 @@
+# Source files
+*.ts
+!*.d.ts
+tsconfig.json
+
+# Development files
+.vscode/
+.git/
+node_modules/
+bun.lock
+*.test.*
+TODO.md
+
+# Build artifacts (keep dist/ but exclude everything else)
+*.tsbuildinfo
+
+# Only include what's specified in package.json "files" field:
+# - dist/**/*
+# - README.md  
+# - LICENSE 

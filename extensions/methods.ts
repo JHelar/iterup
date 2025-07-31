@@ -1,4 +1,4 @@
-import { fromIterator, None, type Option } from "../core";
+import { fromIterator, None, type Iterup, type Option } from "../core";
 import { isIterator } from "../utils";
 
 /**
@@ -20,7 +20,7 @@ import { isIterator } from "../utils";
  */
 export function enumerate<Value>(
   iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>
-) {
+): Iterup<[Value, number]> {
   const generator = function* () {
     let index = 0;
     for (const value of iterator) {
@@ -52,7 +52,7 @@ export function enumerate<Value>(
 export function findMap<FilterValue, Value>(
   iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>,
   f: (value: Value, index: number) => Option<FilterValue>
-) {
+): FilterValue | undefined {
   for (const [value, index] of enumerate(iterator)) {
     const newValue = f(value, index);
     if (newValue === None) continue;
@@ -80,7 +80,7 @@ export function findMap<FilterValue, Value>(
 export function filterMap<FilterValue, Value>(
   iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>,
   f: (value: Value, index: number) => Option<FilterValue>
-) {
+): Iterup<FilterValue> {
   const generator = function* () {
     for (const [value, index] of enumerate(iterator)) {
       const newValue = f(value as Value, index);

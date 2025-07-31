@@ -83,7 +83,7 @@ export type OverrideFunctions<Value> = keyof Overrides<Value>;
  * Set of function names that are overridden to return Iterup instances.
  * Used internally by the proxy to determine when to wrap return values.
  */
-export const OverrideFunctions = new Set<OverrideFunctions<{}>>([
+export const OverrideFunctions: Set<OverrideFunctions<{}>> = new Set([
   "map",
   "filter",
   "flatMap",

@@ -111,10 +111,10 @@ export type Extensions<Value> = {
  * Implementation object mapping extension method names to their implementations.
  * Used internally by the proxy to provide extension methods on Iterup instances.
  */
-export const Extensions = {
+export const Extensions: Record<keyof Extensions<{}>, any> = {
   filterMap,
   findMap,
   collect,
   toArray: collect,
   enumerate,
-} satisfies Record<keyof Extensions<{}>, any>;
+};

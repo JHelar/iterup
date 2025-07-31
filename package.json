@@ -1,11 +1,47 @@
 {
   "name": "@jhel/iterup",
-  "module": "main.ts",
   "type": "module",
-  "version": "0.0.1",
-  "exports": "./main.ts",
+  "version": "0.0.4",
+  "description": "A TypeScript iterator utility library that provides lazy evaluation for efficient data processing",
+  "keywords": [
+    "iterator",
+    "lazy",
+    "functional",
+    "typescript",
+    "performance"
+  ],
+  "main": "./dist/main.js",
+  "module": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/main.js",
+      "types": "./dist/main.d.ts"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JHelar/iterup.git"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "bun run clean && bun run build",
+    "test": "bun test",
+    "publish:jsr": "npx jsr publish",
+    "publish:npm": "npm publish"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"
