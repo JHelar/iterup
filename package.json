@@ -1,7 +1,7 @@
 {
   "name": "@jhel/iterup",
   "type": "module",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "A TypeScript iterator utility library that provides lazy evaluation for efficient data processing",
   "keywords": [
     "iterator",
@@ -34,7 +34,7 @@
     "prepublishOnly": "bun run clean && bun run build",
     "test": "bun test",
     "publish:jsr": "npx jsr publish",
-    "publish:npm": "npm publish"
+    "publish:npm": "bun publish"
   },
   "publishConfig": {
     "access": "public"

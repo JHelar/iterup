@@ -1,2 +1,11 @@
 export { iterup, None } from "./core";
-export { enumerate, filterMap, findMap } from "./extensions/methods";
+export {
+  enumerate,
+  filterMap,
+  findMap,
+  collect,
+  map,
+  flatMap,
+  take,
+  drop,
+} from "./extensions/methods";

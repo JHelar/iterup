@@ -1,5 +1,13 @@
-import { fromIterator, None, type Iterup, type Option } from "../core";
-import { isIterator } from "../utils";
+import {
+  BaseAsyncIterator,
+  BaseIterator,
+  BaseSyncIterator,
+  fromAsyncIterator,
+  None,
+  type Iterup,
+  type Option,
+} from "../core";
+import { isAsyncIterator, isIterator } from "../utils";
 
 /**
  * Creates an iterator that yields tuples of [value, index] for each element.
@@ -19,17 +27,17 @@ import { isIterator } from "../utils";
  * ```
  */
 export function enumerate<Value>(
-  iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>
+  iterator: Iterable<Value> | BaseIterator<Value>
 ): Iterup<[Value, number]> {
-  const generator = function* () {
+  const generator = async function* () {
     let index = 0;
-    for (const value of iterator) {
+    for await (const value of iterator) {
       yield [value, index++] as [Value, number];
     }
     return undefined;
   };
 
-  return fromIterator(generator());
+  return fromAsyncIterator(generator());
 }
 
 /**
@@ -49,12 +57,19 @@ export function enumerate<Value>(
  * console.log(firstEven); // 4 (2 * 2)
  * ```
  */
-export function findMap<FilterValue, Value>(
-  iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>,
-  f: (value: Value, index: number) => Option<FilterValue>
-): FilterValue | undefined {
-  for (const [value, index] of enumerate(iterator)) {
-    const newValue = f(value, index);
+export async function findMap<FilterValue, Value>(
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  f: (
+    value: Value,
+    index: number
+  ) => Option<FilterValue> | Promise<Option<FilterValue>>
+): Promise<FilterValue | undefined> {
+  for await (const [value, index] of enumerate(iterator)) {
+    let newValue = f(value, index);
+    if (newValue instanceof Promise) {
+      newValue = await newValue;
+    }
+
     if (newValue === None) continue;
     return newValue;
   }
@@ -78,19 +93,108 @@ export function findMap<FilterValue, Value>(
  * ```
  */
 export function filterMap<FilterValue, Value>(
-  iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>,
-  f: (value: Value, index: number) => Option<FilterValue>
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  f: (value: Value, index: number) => Option<FilterValue> | Promise<FilterValue>
 ): Iterup<FilterValue> {
-  const generator = function* () {
-    for (const [value, index] of enumerate(iterator)) {
-      const newValue = f(value as Value, index);
+  const generator = async function* () {
+    for await (const [value, index] of enumerate(iterator)) {
+      let newValue = f(value, index);
+      if (newValue instanceof Promise) {
+        newValue = await newValue;
+      }
+
       if (newValue === None) continue;
       yield newValue;
     }
     return undefined;
   };
 
-  return fromIterator(generator());
+  return fromAsyncIterator(generator());
+}
+
+export function map<Value, MapValue>(
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  f: (value: Value, index: number) => MapValue | Promise<MapValue>
+): Iterup<MapValue> {
+  const generator = async function* () {
+    for await (const [value, index] of enumerate(iterator)) {
+      let newValue = f(value, index);
+      if (newValue instanceof Promise) {
+        newValue = await newValue;
+      }
+      yield newValue;
+    }
+    return undefined;
+  };
+
+  return fromAsyncIterator(generator());
+}
+
+export function flatMap<Value, MapValue>(
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  f: (
+    value: Value,
+    index: number
+  ) =>
+    | Iterable<MapValue>
+    | BaseIterator<MapValue>
+    | Promise<Iterable<MapValue> | BaseIterator<MapValue>>
+): Iterup<MapValue> {
+  const generator = async function* () {
+    for await (const [value, index] of enumerate(iterator)) {
+      let newValues = f(value, index);
+      if (newValues instanceof Promise) {
+        newValues = await newValues;
+      }
+
+      yield* newValues;
+    }
+    return undefined;
+  };
+
+  return fromAsyncIterator(generator());
+}
+
+export function drop<Value>(
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  count: number
+): Iterup<Value> {
+  const generator = async function* () {
+    for await (const [value, index] of enumerate(iterator)) {
+      if (count > index) continue;
+      yield value;
+    }
+    return undefined;
+  };
+
+  return fromAsyncIterator(generator());
+}
+
+export function take<Value>(
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  count: number
+): Iterup<Value> {
+  const generator = async function* () {
+    if (count === 0) return undefined;
+    for await (const [value, index] of enumerate(iterator)) {
+      yield value;
+      if (index + 1 >= count) break;
+    }
+    return undefined;
+  };
+
+  return fromAsyncIterator(generator());
+}
+
+export async function filter<Value>(
+  iterator: Iterable<Value> | BaseIterator<Value>,
+  f: (value: Value, index: number) => boolean | Promise<boolean>
+): Promise<Value | undefined> {
+  for await (const [value, index] of enumerate(iterator)) {
+    if (f(value, index)) {
+      return value;
+    }
+  }
 }
 
 /**
@@ -109,11 +213,15 @@ export function filterMap<FilterValue, Value>(
  * console.log(result); // [2, 4, 6, 8, 10]
  * ```
  */
-export function collect<Value>(
-  iterator: Iterable<Value> | IteratorObject<Value, undefined, unknown>
-): Array<Value> {
-  if (isIterator(iterator)) {
-    return iterator.toArray();
+export async function collect<Value>(
+  iterator: Iterable<Value> | BaseIterator<Value>
+): Promise<Array<Value>> {
+  if (isAsyncIterator(iterator) || isIterator(iterator)) {
+    const result: Value[] = [];
+    for await (const value of iterator) {
+      result.push(value);
+    }
+    return result;
   }
   return Array.from(iterator);
 }

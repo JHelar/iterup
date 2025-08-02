@@ -1,12 +1,14 @@
 # @jhel/iterup
 
-A TypeScript iterator utility library that provides lazy evaluation for efficient data processing. Using the iterator API, operations like `map`, `filter`, and `filterMap` don't consume values or create intermediate arrays until you call a consuming method like `collect()` or `toArray()`.
+A TypeScript async iterator utility library that provides lazy evaluation for efficient data processing. All operations are asynchronous by design, supporting both synchronous and asynchronous data sources and transformation functions. Operations like `map`, `filter`, and `filterMap` don't consume values or create intermediate arrays until you call a consuming method like `collect()` or `toArray()`.
 
-This makes it significantly more performant than chaining multiple `.map()`, `.filter()` operations on arrays directly, especially for large datasets or when only partial consumption is needed.
+This makes it significantly more performant than chaining multiple `.map()`, `.filter()` operations on arrays directly, especially for large datasets, async operations, or when only partial consumption is needed.
 
 ## Features
 
 - 🚀 **Lazy evaluation** - Operations are deferred until consumption
+- ⚡ **Async-first design** - All operations support async/await patterns
+- 🔄 **Mixed sync/async support** - Works with sync arrays, async generators, and mixed transformation functions
 - 🔗 **Chainable API** - Fluent interface for readable code
 - 📦 **TypeScript first** - Full type safety with excellent IntelliSense
 - 🎯 **Memory efficient** - No intermediate arrays until you need them
@@ -25,28 +27,32 @@ npm install @jhel/iterup
 ```ts
 import { iterup, None } from '@jhel/iterup'
 
-const numbers = iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-  .filter(n => n % 2 === 0)        // Keep only even numbers
-  .map(n => n * 2)                 // Double them
-  .filterMap(n => n > 10 ? `Big: ${n}` : None)  // Transform big numbers
-  .collect();                      // Materialize the result
+const numbers = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  .filterMap(n => n % 2 === 0 ? n : None)        // Keep only even numbers
+  .map(n => n * 2)                               // Double them
+  .drop(1)                                       // Skip first result
+  .take(2)                                       // Take next 2
+  .collect();                                    // Materialize the result
 
-console.log(numbers); // ["Big: 12", "Big: 16", "Big: 20"]
+console.log(numbers); // [8, 12]
 ```
 
 ## API Reference
+
+> **Note:** All Iterup instances are async iterators. Methods like `collect()`, `toArray()`, and `findMap()` return Promises and should be awaited.
 
 ### Creating Iterup Instances
 
 #### `iterup(collection)`
 
-Creates an Iterup instance from any iterable (arrays, sets, strings, etc.) or iterator.
+Creates an Iterup instance from any iterable, sync iterator, or async iterator. The result is always an async iterator for consistent API design.
 
 ```ts
 import { iterup } from '@jhel/iterup'
 
 // From array
 const numbers = iterup([1, 2, 3, 4, 5]);
+const result = await numbers.collect(); // [1, 2, 3, 4, 5]
 
 // From set
 const uniqueNumbers = iterup(new Set([1, 2, 2, 3]));
@@ -54,7 +60,7 @@ const uniqueNumbers = iterup(new Set([1, 2, 2, 3]));
 // From string
 const chars = iterup("hello");
 
-// From generator
+// From sync generator
 function* fibonacci() {
   let [a, b] = [0, 1];
   while (true) {
@@ -63,6 +69,14 @@ function* fibonacci() {
   }
 }
 const fibNumbers = iterup(fibonacci());
+
+// From async generator
+async function* asyncNumbers() {
+  for (let i = 1; i <= 5; i++) {
+    yield await Promise.resolve(i);
+  }
+}
+const asyncNums = iterup(asyncNumbers());
 ```
 
 ### Direct Function Usage
@@ -70,74 +84,122 @@ const fibNumbers = iterup(fibonacci());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
 // Filter and map in one operation
-const result = filterMap(data, (n) => n % 2 === 0 ? n * 2 : None);
-console.log(collect(result)); // [4, 8]
+const result = await collect(filterMap(data, (n) => n % 2 === 0 ? n * 2 : None));
+console.log(result); // [4, 8]
 
 // Find and map the first match
-const firstEven = findMap(data, (n) => n % 2 === 0 ? `Even: ${n}` : None);
+const firstEven = await findMap(data, (n) => n % 2 === 0 ? `Even: ${n}` : None);
 console.log(firstEven); // "Even: 2"
+
+// Chain multiple operations
+const processed = await collect(
+  take(
+    map(
+      drop(data, 1), 
+      x => x * 2
+    ), 
+    2
+  )
+);
+console.log(processed); // [4, 6] (dropped first, doubled, took 2)
 ```
 
 ### Core Methods
 
 #### `.map(fn)`
 
-Transforms each element using the provided function.
+Transforms each element using the provided function. Supports both sync and async transformation functions.
 
 ```ts
-const doubled = iterup([1, 2, 3])
+// Sync transformation
+const doubled = await iterup([1, 2, 3])
   .map(n => n * 2)
   .collect(); // [2, 4, 6]
-```
 
-#### `.filter(predicate)`
+// Async transformation
+const asyncDoubled = await iterup([1, 2, 3])
+  .map(async n => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return n * 2;
+  })
+  .collect(); // [2, 4, 6]
 
-Filters elements using a predicate function with type narrowing support.
-
-```ts
-const numbers = iterup([1, null, 3, undefined, 5])
-  .filter((x): x is number => typeof x === 'number')
-  .collect(); // [1, 3, 5]
+// With index
+const indexed = await iterup(['a', 'b', 'c'])
+  .map((value, index) => `${index}: ${value}`)
+  .collect(); // ['0: a', '1: b', '2: c']
 ```
 
 #### `.flatMap(fn)`
 
-Maps each element to an iterable and flattens the results.
+Maps each element to an iterable and flattens the results. Supports async transformation functions.
 
 ```ts
-const words = iterup(['hello', 'world'])
+// Flatten arrays
+const flattened = await iterup([1, 2, 3])
+  .flatMap(x => [x, x * 10])
+  .collect(); // [1, 10, 2, 20, 3, 30]
+
+// Split strings
+const chars = await iterup(['hello', 'world'])
   .flatMap(word => word.split(''))
   .collect(); // ['h', 'e', 'l', 'l', 'o', 'w', 'o', 'r', 'l', 'd']
+
+// Async transformation
+const asyncFlattened = await iterup([1, 2])
+  .flatMap(async x => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return [x, x + 10];
+  })
+  .collect(); // [1, 11, 2, 12]
 ```
 
 ### Extension Methods
 
 #### `.filterMap(fn)`
 
-Combines filtering and mapping in a single efficient operation. Return `None` to filter out elements, or a value to transform and include them.
+Combines filtering and mapping in a single efficient operation. Return `None` to filter out elements, or a value to transform and include them. Supports async transformation functions.
 
 ```ts
-const numbers = iterup([1, 2, 3, 4, 5, 6])
+// Basic filter and map
+const numbers = await iterup([1, 2, 3, 4, 5, 6])
   .filterMap(n => {
     if (n % 2 === 0) return `Even: ${n}`;
     return None; // Filter out odd numbers
   })
   .collect(); // ["Even: 2", "Even: 4", "Even: 6"]
+
+// Async transformation
+const asyncFiltered = await iterup([1, 2, 3, 4])
+  .filterMap(async n => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return n > 2 ? n * 2 : None;
+  })
+  .collect(); // [6, 8]
 ```
 
 #### `.findMap(fn)`
 
-Finds the first element that matches the predicate and maps it. Consumes the iterator until a match is found.
+Finds the first element that matches the predicate and maps it. Consumes the iterator until a match is found. Supports async transformation functions.
 
 ```ts
-const numbers = iterup([1, 3, 5, 2, 4])
+// Find first even number
+const firstEven = await iterup([1, 3, 5, 2, 4])
   .findMap(n => n % 2 === 0 ? `First even: ${n}` : None);
-console.log(numbers); // "First even: 2"
+console.log(firstEven); // "First even: 2"
+
+// Async transformation
+const asyncFound = await iterup([1, 2, 3])
+  .findMap(async n => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return n > 1 ? `Found: ${n}` : None;
+  });
+console.log(asyncFound); // "Found: 2"
 ```
 
 #### `.enumerate()`
@@ -145,28 +207,60 @@ console.log(numbers); // "First even: 2"
 Creates an iterator that yields `[value, index]` tuples, similar to Python's `enumerate()`.
 
 ```ts
-const letters = iterup(['a', 'b', 'c'])
+const letters = await iterup(['a', 'b', 'c'])
   .enumerate()
   .collect(); // [['a', 0], ['b', 1], ['c', 2]]
 
 // Useful for indexed operations
-const indexed = iterup(['apple', 'banana', 'cherry'])
+const indexed = await iterup(['apple', 'banana', 'cherry'])
   .enumerate()
   .map(([fruit, i]) => `${i + 1}. ${fruit}`)
   .collect(); // ["1. apple", "2. banana", "3. cherry"]
 ```
 
-#### `.collect()` / `.toArray()`
+#### `.take(count)`
 
-Materializes all values from the iterator into an array. This consumes the iterator.
+Takes the first `count` elements from the iterator.
 
 ```ts
-const result = iterup([1, 2, 3])
+const first3 = await iterup([1, 2, 3, 4, 5])
+  .take(3)
+  .collect(); // [1, 2, 3]
+
+// Useful for limiting results
+const limitedResults = await iterup(largeDataset)
+  .map(expensiveOperation)
+  .take(10)  // Only process first 10 items
+  .collect();
+```
+
+#### `.drop(count)`
+
+Skips the first `count` elements from the iterator.
+
+```ts
+const without2 = await iterup([1, 2, 3, 4, 5])
+  .drop(2)
+  .collect(); // [3, 4, 5]
+
+// Skip header rows
+const dataRows = await iterup(csvLines)
+  .drop(1)  // Skip header
+  .map(parseCsvLine)
+  .collect();
+```
+
+#### `.collect()` / `.toArray()`
+
+Materializes all values from the iterator into an array. This consumes the iterator and returns a Promise.
+
+```ts
+const result = await iterup([1, 2, 3])
   .map(n => n * 2)
   .collect(); // [2, 4, 6]
 
 // .toArray() is an alias for .collect()
-const same = iterup([1, 2, 3])
+const same = await iterup([1, 2, 3])
   .map(n => n * 2)
   .toArray(); // [2, 4, 6]
 ```
@@ -184,7 +278,7 @@ function processNumber(n: number): Option<string> {
   return None; // Filter out zero
 }
 
-const results = iterup([-2, -1, 0, 1, 2])
+const results = await iterup([-2, -1, 0, 1, 2])
   .filterMap(processNumber)
   .collect();
 // ["Negative: -2", "Negative: -1", "Positive: 1", "Positive: 2"]
@@ -192,89 +286,157 @@ const results = iterup([-2, -1, 0, 1, 2])
 
 ## Advanced Examples
 
-### Processing Large Datasets
+### Processing Large Datasets with Async Operations
 
 ```ts
-// Efficiently process large datasets without intermediate arrays
-const processLargeDataset = (data: number[]) => {
-  return iterup(data)
-    .filter(n => n > 0)                    // Keep positive numbers
-    .map(n => Math.sqrt(n))                // Calculate square root
-    .filterMap(n => {                      // Filter and format
-      if (n > 10) return `Large: ${n.toFixed(2)}`;
-      if (n > 1) return `Medium: ${n.toFixed(2)}`;
-      return None; // Skip small numbers
+// Efficiently process large datasets with async operations
+const processLargeDataset = async (data: number[]) => {
+  return await iterup(data)
+    .filterMap(async n => {
+      if (n <= 0) return None;
+      // Simulate async API call
+      const result = await fetch(`/api/process/${n}`);
+      return result.ok ? await result.text() : None;
     })
-    .enumerate()                           // Add indices
-    .map(([value, i]) => `${i}: ${value}`) // Format with index
+    .take(10)                                    // Limit to first 10 successful results
+    .enumerate()                                 // Add indices
+    .map(([value, i]) => `${i}: ${value}`)      // Format with index
     .collect();
 };
 ```
 
-### Working with Async Iterators
+### Working with Async Data Sources
 
 ```ts
-async function* asyncNumbers() {
-  for (let i = 1; i <= 5; i++) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-    yield i;
+// Reading from async sources like streams or APIs
+async function* fetchPages() {
+  let page = 1;
+  while (page <= 5) {
+    const response = await fetch(`/api/data?page=${page}`);
+    const data = await response.json();
+    for (const item of data.items) {
+      yield item;
+    }
+    page++;
   }
 }
 
-// Note: Currently iterup works with sync iterators
-// For async iterators, you can collect first:
-const asyncResults = [];
-for await (const value of asyncNumbers()) {
-  asyncResults.push(value);
-}
-
-const processed = iterup(asyncResults)
-  .filterMap(n => n % 2 === 0 ? n * 2 : None)
-  .collect(); // [4, 8]
+const processedData = await iterup(fetchPages())
+  .filterMap(async item => {
+    // Validate and transform each item
+    if (!item.valid) return None;
+    return await processItem(item);
+  })
+  .collect();
 ```
 
-### Type-Safe Data Transformation
+### Mixed Sync/Async Transformations
 
 ```ts
 interface User {
   id: number;
   name: string;
-  age?: number;
+  email?: string;
 }
 
 const users: User[] = [
-  { id: 1, name: "Alice", age: 30 },
+  { id: 1, name: "Alice", email: "alice@example.com" },
   { id: 2, name: "Bob" },
-  { id: 3, name: "Charlie", age: 25 },
+  { id: 3, name: "Charlie", email: "charlie@example.com" },
 ];
 
-const adultNames = iterup(users)
-  .filterMap(user => user.age && user.age >= 18 ? user.name : None)
-  .collect(); // ["Alice", "Charlie"]
+// Mix sync and async operations
+const enrichedUsers = await iterup(users)
+  .filterMap(user => user.email ? user : None)          // Sync: filter users with email
+  .map(async user => {                                  // Async: enrich with profile data
+    const profile = await fetchUserProfile(user.id);
+    return { ...user, profile };
+  })
+  .filterMap(async enrichedUser => {                    // Async: validate and format
+    const isValid = await validateUser(enrichedUser);
+    return isValid ? formatUser(enrichedUser) : None;
+  })
+  .collect();
 ```
 
-## Performance Benefits
-
-The lazy evaluation approach provides several performance advantages:
-
-1. **Memory efficiency**: No intermediate arrays are created
-2. **Early termination**: Operations like `findMap` stop as soon as a match is found
-3. **Composability**: Complex operations can be built up without performance penalties
-4. **Large dataset handling**: Process datasets that might not fit in memory all at once
+### Lazy Evaluation Benefits
 
 ```ts
-// Traditional approach - creates intermediate arrays
-const traditional = data
-  .map(x => expensiveOperation(x))    // Creates intermediate array
-  .filter(x => x > threshold)        // Creates another intermediate array
-  .slice(0, 10);                     // Finally take what we need
+// The power of lazy evaluation with async operations
+const processOnlyNeeded = async () => {
+  let apiCallCount = 0;
+  
+  const result = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    .map(async n => {
+      apiCallCount++;
+      // Expensive async operation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return await fetch(`/api/process/${n}`).then(r => r.json());
+    })
+    .filterMap(data => data.valid ? data.result : None)
+    .take(3)  // Only need first 3 valid results
+    .collect();
 
-// Iterup approach - lazy evaluation
-const lazy = iterup(data)
-  .map(x => expensiveOperation(x))    // No intermediate arrays
-  .filter(x => x > threshold)        // Still no arrays
-  .take(10)                          // Only process what's needed
-  .collect();                        // Single array creation
+  // Due to lazy evaluation + take(3), API is called only as needed
+  console.log(`API calls made: ${apiCallCount}`); // Likely 3-5, not 10
+  return result;
+};
+```
+
+### Performance Comparison
+
+```ts
+// Traditional approach - creates intermediate arrays and blocks on each operation
+const traditionalApproach = async (data: number[]) => {
+  const step1 = await Promise.all(data.map(async n => {
+    return await expensiveAsyncOperation(n);  // All operations run at once
+  }));
+  
+  const step2 = step1.filter(n => n > 10);   // Creates intermediate array
+  const step3 = step2.map(n => n * 2);       // Creates another intermediate array
+  return step3.slice(0, 5);                  // Finally take what we need
+};
+
+// Iterup approach - lazy evaluation with controlled concurrency
+const iterupApproach = async (data: number[]) => {
+  return await iterup(data)
+    .map(async n => await expensiveAsyncOperation(n))  // Processed one by one
+    .filterMap(n => n > 10 ? n * 2 : None)             // No intermediate arrays
+    .take(5)                                           // Stop early when we have enough
+    .collect();                                        // Single array creation
+};
+```
+
+## Error Handling
+
+```ts
+// Handle errors in async transformations
+const safeProcess = await iterup([1, 2, 3, 4, 5])
+  .filterMap(async n => {
+    try {
+      const result = await riskyAsyncOperation(n);
+      return result;
+    } catch (error) {
+      console.warn(`Failed to process ${n}:`, error);
+      return None; // Filter out failed operations
+    }
+  })
+  .collect();
+
+// Or use a helper for error handling
+const withErrorHandling = <T, R>(
+  fn: (value: T, index: number) => Promise<R>
+) => async (value: T, index: number): Promise<Option<R>> => {
+  try {
+    return await fn(value, index);
+  } catch {
+    return None;
+  }
+};
+
+const safeResults = await iterup(data)
+  .filterMap(withErrorHandling(async n => await riskyOperation(n)))
+  .collect();
 ```
 
 ## Type Safety
@@ -288,11 +450,18 @@ const numbers = iterup([1, 2, 3, 4, 5]);
 const strings = numbers.map(n => n.toString());
 // Type: Iterup<string>
 
-const evens = numbers.filter((n): n is number => n % 2 === 0);
-// Type: Iterup<number> (with type narrowing)
-
-const processed = numbers.filterMap(n => n > 3 ? `Big: ${n}` : None);
+const filtered = numbers.filterMap(n => n > 3 ? `Big: ${n}` : None);
 // Type: Iterup<string>
+
+// Async transformations are properly typed
+const asyncResults = numbers.map(async n => {
+  const result = await someAsyncOperation(n);
+  return result; // TypeScript knows this is Promise<SomeType>
+});
+// Type: Iterup<SomeType>
+
+const collected = await asyncResults.collect();
+// Type: SomeType[]
 ```
 
 ## Development
@@ -306,6 +475,11 @@ bun install
 Run tests:
 ```bash
 bun test
+```
+
+Build for npm:
+```bash
+bun run build
 ```
 
 ## License
