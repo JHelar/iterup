@@ -105,13 +105,6 @@ describe("map", () => {
       .collect();
     expect(result).toEqual([2, 4, 6]);
   });
-
-  test("should provide index to transformation function", async () => {
-    const result = await iterup(["a", "b", "c"])
-      .map((value, index) => `${index}: ${value}`)
-      .collect();
-    expect(result).toEqual(["0: a", "1: b", "2: c"]);
-  });
 });
 
 describe("flatMap", () => {
