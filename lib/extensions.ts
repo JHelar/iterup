@@ -1,4 +1,4 @@
-import type { BaseIterator, Iterup, Option } from "../core";
+import type { BaseIterator, Iterup, Option } from "./core";
 import {
   collect,
   drop,

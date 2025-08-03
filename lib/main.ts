@@ -8,4 +8,4 @@ export {
   flatMap,
   take,
   drop,
-} from "./extensions/methods";
+} from "./methods";

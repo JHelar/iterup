@@ -58,15 +58,12 @@ example
 example
 ```ts
 const None = Symbol("None")
-function Some<T>(value: T) {
-    return () => value
-}
 
-type Option<T> = Some<T> | None
+type Option<T> = T | None
 
 [1, 2, 3].filterMap((value) => {
     if(value === 1) retrun None // filter signal
-    return Some(`Value: ${value}`) 
+    return `Value: ${value}`
 })
 ```
 
@@ -82,6 +79,10 @@ type Option<T> = Some<T> | None
 ## Iterators
 - filterMap
 - filterFind
-
-## Handling native iterator functions
-- should we override them or keep them?
+- enumerate
+- map
+- flatMap
+- drop
+- take
+- filter
+- collect

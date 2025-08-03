@@ -14,9 +14,9 @@
 
     // Output configuration for npm publishing
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./lib",
     "declaration": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "sourceMap": true,
     "noEmit": false,
 
@@ -32,6 +32,6 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["*.ts", "extensions/**/*.ts"],
+  "include": ["lib"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

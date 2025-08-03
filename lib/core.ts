@@ -1,6 +1,6 @@
 import { Extensions } from "./extensions";
 import { OverrideFunctions, type Overrides } from "./overrides";
-import { isAsyncIterator, isIterator } from "./utils";
+import { isAsyncIterator } from "./utils";
 
 /**
  * Sentinel value representing the absence of a value in Option types.

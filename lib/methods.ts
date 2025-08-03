@@ -5,8 +5,8 @@ import {
   None,
   type Iterup,
   type Option,
-} from "../core";
-import { isAsyncIterator, isIterator } from "../utils";
+} from "./core";
+import { isAsyncIterator, isIterator } from "./utils";
 
 export function enumerate<Value>(
   iterator: BaseIterator<Value>
