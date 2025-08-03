@@ -311,7 +311,49 @@ export async function collect<Value>(
   return Array.from(iterator);
 }
 
-export type RangeArgument = { from: number; to?: number; inclusive?: boolean };
+/**
+ * Configuration object for creating numeric ranges.
+ * Defines the start point, optional end point, and whether the end is included.
+ */
+export type RangeArgument = {
+  /** Starting number of the range (inclusive) */
+  from: number;
+  /** Ending number of the range (exclusive by default, inclusive if inclusive=true) */
+  to?: number;
+  /** Whether to include the 'to' value in the range (default: false) */
+  inclusive?: boolean;
+};
+
+/**
+ * Creates an iterator that yields a sequence of numbers within a specified range.
+ * Provides a convenient way to generate numeric sequences without pre-allocating arrays.
+ *
+ * @param options - Configuration object specifying the range parameters
+ * @param options.from - Starting number (inclusive)
+ * @param options.to - Ending number (exclusive by default, defaults to Number.MAX_SAFE_INTEGER)
+ * @param options.inclusive - Whether to include the 'to' value (default: false)
+ * @returns An Iterup yielding numbers in the specified range
+ *
+ * @example
+ * ```ts
+ * // Basic range from 0 to 4 (exclusive)
+ * const basic = await range({ from: 0, to: 5 }).collect();
+ * // result: [0, 1, 2, 3, 4]
+ *
+ * // Inclusive range
+ * const inclusive = await range({ from: 1, to: 3, inclusive: true }).collect();
+ * // result: [1, 2, 3]
+ *
+ * // Infinite range (be careful with collect()!)
+ * const infinite = range({ from: 10 }); // 10, 11, 12, ...
+ * const first5 = await infinite.take(5).collect();
+ * // result: [10, 11, 12, 13, 14]
+ *
+ * // Used with iterup() overload
+ * const shorthand = await iterup({ from: 0, to: 3 }).collect();
+ * // result: [0, 1, 2]
+ * ```
+ */
 export function range({
   from,
   to = Number.MAX_SAFE_INTEGER,

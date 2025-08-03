@@ -157,11 +157,17 @@ function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
 }
 
 /**
- * Main entry point for creating an Iterup instance from any iterator type.
- * Automatically detects whether the input is an async iterator or regular iterable
- * and applies the appropriate wrapping.
+ * Main entry point for creating an Iterup instance from any iterator type or range.
+ * This function is overloaded to handle both collections and range arguments:
+ * - When passed a RangeArgument, creates a numeric range iterator
+ * - When passed any other iterator/iterable, wraps it with extension methods
+ * Automatically detects the input type and applies appropriate wrapping.
  *
- * @template Value - The type of values in the collection
+ * @overload
+ * @param range - Range configuration object to create a numeric sequence
+ * @returns An Iterup instance yielding numbers in the specified range
+ *
+ * @overload
  * @param collection - Any iterator, iterable, or async iterator to enhance
  * @returns An Iterup instance with functional programming methods
  *
@@ -170,17 +176,30 @@ function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
  * // From array
  * const fromArray = iterup([1, 2, 3, 4]);
  *
+ * // From range argument (new overload)
+ * const fromRange = iterup({ from: 0, to: 5 });
+ * const rangeResult = await fromRange.collect();
+ * // result: [0, 1, 2, 3, 4]
+ *
  * // From async generator
  * async function* asyncGen() {
  *   yield 1; yield 2; yield 3;
  * }
  * const fromAsync = iterup(asyncGen());
  *
- * // Chain operations
- * const result = await iterup([1, 2, 3, 4, 5])
+ * // Chain operations with range
+ * const result = await iterup({ from: 1, to: 6 })
  *   .map(x => x * 2)
  *   .filter(x => x > 5)
  *   .collect();
+ * // result: [6, 8, 10]
+ *
+ * // Chain operations with array
+ * const arrayResult = await iterup([1, 2, 3, 4, 5])
+ *   .map(x => x * 2)
+ *   .filter(x => x > 5)
+ *   .collect();
+ * // result: [6, 8, 10]
  * ```
  */
 export function iterup(range: RangeArgument): Iterup<number>;

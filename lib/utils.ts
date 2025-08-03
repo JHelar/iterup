@@ -40,6 +40,30 @@ export function isIterator<Value>(
   );
 }
 
+/**
+ * Type guard to check if a value is iterable (has Symbol.iterator).
+ * This includes arrays, sets, maps, strings, and other iterable objects.
+ *
+ * @template Value - The type of values the iterable should yield
+ * @param value - The value to check
+ * @returns True if the value is iterable
+ *
+ * @example
+ * ```ts
+ * if (isIterable(someValue)) {
+ *   // someValue is now typed as Iterable<Value>
+ *   for (const item of someValue) {
+ *     console.log(item);
+ *   }
+ * }
+ *
+ * // Works with various iterables
+ * isIterable([1, 2, 3]); // true - Array
+ * isIterable(new Set([1, 2])); // true - Set
+ * isIterable("hello"); // true - String
+ * isIterable(42); // false - Number
+ * ```
+ */
 export function isIterable<Value>(value: unknown): value is Iterable<Value> {
   if (typeof value !== "object") return false;
   if (value === null) return false;
