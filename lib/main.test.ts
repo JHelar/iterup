@@ -265,3 +265,11 @@ describe("type guards", () => {
     expect(isIterup(collection.enumerate())).toBeTrue();
   });
 });
+
+describe("range", () => {
+  test("should return an instance of given range value", async () => {
+    const collection = await iterup({ from: 10 }).take(5).collect();
+
+    expect(collection).toEqual([10, 11, 12, 13, 14]);
+  });
+});

@@ -1,6 +1,7 @@
 import { Extensions } from "./extensions";
+import { range, RangeArgument } from "./methods";
 import { OverrideFunctions, type Overrides } from "./overrides";
-import { isAsyncIterator } from "./utils";
+import { isAsyncIterator, isIterable, isIterator } from "./utils";
 
 /**
  * Sentinel value representing the absence of a value in Option types.
@@ -182,9 +183,17 @@ function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
  *   .collect();
  * ```
  */
-export function iterup<Value>(collection: BaseIterator<Value>): Iterup<Value> {
+export function iterup(range: RangeArgument): Iterup<number>;
+export function iterup<Value>(collection: BaseIterator<Value>): Iterup<Value>;
+export function iterup<Value>(
+  collection: BaseIterator<Value> | RangeArgument
+): Iterup<Value> | Iterup<number> {
   if (isAsyncIterator(collection)) {
     return fromAsyncIterator(collection);
   }
-  return fromIterable(collection);
+  if (isIterator(collection) || isIterable(collection)) {
+    return fromIterable(collection);
+  }
+
+  return range(collection);
 }

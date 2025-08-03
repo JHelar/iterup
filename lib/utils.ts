@@ -40,6 +40,14 @@ export function isIterator<Value>(
   );
 }
 
+export function isIterable<Value>(value: unknown): value is Iterable<Value> {
+  if (typeof value !== "object") return false;
+  if (value === null) return false;
+  return (
+    Symbol.iterator in value && typeof value[Symbol.iterator] === "function"
+  );
+}
+
 /**
  * Type guard to check if a value is an asynchronous iterator.
  * Checks for the presence of the Symbol.asyncIterator method.

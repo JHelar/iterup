@@ -310,3 +310,23 @@ export async function collect<Value>(
   }
   return Array.from(iterator);
 }
+
+export type RangeArgument = { from: number; to?: number; inclusive?: boolean };
+export function range({
+  from,
+  to = Number.MAX_SAFE_INTEGER,
+  inclusive = false,
+}: RangeArgument): Iterup<number> {
+  if (from > to) return iterup([]);
+
+  const generator = async function* () {
+    for (let count = from; count < to; count++) {
+      yield count;
+    }
+    if (inclusive) {
+      yield to;
+    }
+  };
+
+  return fromAsyncIterator(generator());
+}

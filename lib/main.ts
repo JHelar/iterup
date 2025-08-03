@@ -27,4 +27,5 @@ export {
   flatMap,
   take,
   drop,
+  range,
 } from "./methods";

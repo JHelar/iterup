@@ -86,3 +86,4 @@ type Option<T> = T | None
 - take
 - filter
 - collect
+- range
