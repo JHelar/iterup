@@ -27,6 +27,7 @@ npm install @jhel/iterup
 ```ts
 import { iterup, None } from '@jhel/iterup'
 
+// Process an array
 const numbers = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   .filterMap(n => n % 2 === 0 ? n : None)        // Keep only even numbers
   .map(n => n * 2)                               // Double them
@@ -35,6 +36,16 @@ const numbers = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   .collect();                                    // Materialize the result
 
 console.log(numbers); // [8, 12]
+
+// Or generate and process a range
+const rangeResult = await iterup({ from: 1, to: 11 })
+  .filterMap(n => n % 2 === 0 ? n : None)        // Keep only even numbers  
+  .map(n => n * 2)                               // Double them
+  .drop(1)                                       // Skip first result
+  .take(2)                                       // Take next 2
+  .collect();                                    // Materialize the result
+
+console.log(rangeResult); // [8, 12]
 ```
 
 ## API Reference
@@ -43,9 +54,13 @@ console.log(numbers); // [8, 12]
 
 ### Creating Iterup Instances
 
-#### `iterup(collection)`
+#### `iterup(collection)` / `iterup(range)`
 
-Creates an Iterup instance from any iterable, sync iterator, or async iterator. The result is always an async iterator for consistent API design.
+Creates an Iterup instance from any iterable, sync iterator, async iterator, or range configuration. The result is always an async iterator for consistent API design.
+
+**Overloads:**
+- `iterup(collection)` - Wraps any iterable or iterator
+- `iterup(range)` - Creates a numeric range iterator
 
 ```ts
 import { iterup } from '@jhel/iterup'
@@ -53,6 +68,14 @@ import { iterup } from '@jhel/iterup'
 // From array
 const numbers = iterup([1, 2, 3, 4, 5]);
 const result = await numbers.collect(); // [1, 2, 3, 4, 5]
+
+// From range (new overload)
+const range1 = iterup({ from: 0, to: 5 });
+const rangeResult = await range1.collect(); // [0, 1, 2, 3, 4]
+
+// Inclusive range
+const range2 = iterup({ from: 1, to: 3, inclusive: true });
+const inclusiveResult = await range2.collect(); // [1, 2, 3]
 
 // From set
 const uniqueNumbers = iterup(new Set([1, 2, 2, 3]));
@@ -84,7 +107,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, range, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -95,6 +118,19 @@ console.log(result); // [4, 8]
 // Find and map the first match
 const firstEven = await findMap(data, (n) => n % 2 === 0 ? `Even: ${n}` : None);
 console.log(firstEven); // "Even: 2"
+
+// Generate numeric ranges
+const numbers = await collect(range({ from: 0, to: 5 }));
+console.log(numbers); // [0, 1, 2, 3, 4]
+
+// Inclusive range
+const inclusive = await collect(range({ from: 1, to: 3, inclusive: true }));
+console.log(inclusive); // [1, 2, 3]
+
+// Infinite range (be careful with collect()!)
+const infinite = range({ from: 10 });
+const first5 = await collect(take(infinite, 5));
+console.log(first5); // [10, 11, 12, 13, 14]
 
 // Chain multiple operations
 const processed = await collect(
@@ -157,6 +193,61 @@ const asyncFlattened = await iterup([1, 2])
     return [x, x + 10];
   })
   .collect(); // [1, 11, 2, 12]
+```
+
+### Utility Functions
+
+#### `range(options)`
+
+Creates an iterator that yields a sequence of numbers within a specified range. Provides a convenient way to generate numeric sequences without pre-allocating arrays.
+
+**Parameters:**
+- `options.from` - Starting number (inclusive)
+- `options.to` - Ending number (exclusive by default, defaults to `Number.MAX_SAFE_INTEGER`)
+- `options.inclusive` - Whether to include the 'to' value (default: `false`)
+
+```ts
+import { range } from '@jhel/iterup'
+
+// Basic range from 0 to 4 (exclusive)
+const basic = await range({ from: 0, to: 5 }).collect();
+console.log(basic); // [0, 1, 2, 3, 4]
+
+// Inclusive range
+const inclusive = await range({ from: 1, to: 3, inclusive: true }).collect();
+console.log(inclusive); // [1, 2, 3]
+
+// Infinite range (be careful with collect()!)
+const infinite = range({ from: 10 }); // 10, 11, 12, ...
+const first5 = await infinite.take(5).collect();
+console.log(first5); // [10, 11, 12, 13, 14]
+
+// Used with iterup() overload
+const shorthand = await iterup({ from: 0, to: 3 }).collect();
+console.log(shorthand); // [0, 1, 2]
+
+// Combine with other operations
+const evenSquares = await range({ from: 0, to: 10 })
+  .filterMap(n => n % 2 === 0 ? n * n : None)
+  .collect();
+console.log(evenSquares); // [0, 4, 16, 36, 64]
+
+// Process in chunks
+const processInBatches = async () => {
+  const batchSize = 100;
+  let processed = 0;
+  
+  for (let start = 0; start < 1000; start += batchSize) {
+    const batch = await range({ 
+      from: start, 
+      to: start + batchSize 
+    }).collect();
+    
+    processed += await processBatch(batch);
+  }
+  
+  return processed;
+};
 ```
 
 ### Extension Methods
@@ -328,6 +419,65 @@ const processedData = await iterup(fetchPages())
     return await processItem(item);
   })
   .collect();
+```
+
+### Generating Data with Ranges
+
+```ts
+// Process numeric sequences without creating large arrays
+const processSequence = async () => {
+  // Generate and process a large range efficiently
+  const result = await iterup({ from: 0, to: 1000000 })
+    .filterMap(n => n % 1000 === 0 ? n : None)    // Only process every 1000th number
+    .map(async n => {
+      // Simulate async processing
+      const response = await fetch(`/api/checkpoint/${n}`);
+      return { checkpoint: n, status: response.status };
+    })
+    .take(10)                                      // Only need first 10 checkpoints
+    .collect();
+  
+  return result; // Memory efficient - never created a million-element array
+};
+
+// Batch processing with ranges
+const processBatches = async (totalItems: number, batchSize: number) => {
+  const results = [];
+  
+  // Process data in batches using ranges
+  for (let start = 0; start < totalItems; start += batchSize) {
+    const batch = await iterup({ from: start, to: start + batchSize })
+      .map(async id => await fetchItem(id))
+      .filterMap(item => item.isValid ? item : None)
+      .collect();
+    
+    results.push(...batch);
+    
+    // Optional: Add delay between batches
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  return results;
+};
+
+// Infinite sequences with controlled consumption
+const infiniteProcessor = async () => {
+  // Generate infinite sequence but only process what we need
+  const processor = iterup({ from: 1 })  // 1, 2, 3, 4, ...
+    .filterMap(async n => {
+      const data = await fetchData(n);
+      return data.isComplete ? data : None;
+    });
+  
+  // Consume until we have enough results
+  const results = [];
+  for await (const item of processor) {
+    results.push(item);
+    if (results.length >= 5) break;  // Stop when we have enough
+  }
+  
+  return results;
+};
 ```
 
 ### Mixed Sync/Async Transformations

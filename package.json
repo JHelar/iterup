@@ -1,7 +1,7 @@
 {
   "name": "@jhel/iterup",
   "type": "module",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A TypeScript iterator utility library that provides lazy evaluation for efficient data processing",
   "keywords": [
     "iterator",
