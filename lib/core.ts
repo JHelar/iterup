@@ -47,25 +47,61 @@ export type IterupID = typeof IterupID;
  */
 export type Option<T> = None | T;
 
+/**
+ * Internal type that excludes certain functions from the base iterator interface.
+ * These functions are either overridden or have special handling in Iterup.
+ */
 type Excludes<Value> = OverrideFunctions<Value> | "toArray";
 
+/**
+ * Base async iterator type for handling asynchronous iteration.
+ * @template Value - The type of values yielded by the iterator
+ */
 export type BaseAsyncIterator<Value> = AsyncIteratorObject<
   Value,
   unknown,
   unknown
 >;
+
+/**
+ * Base synchronous iterator type for handling regular iteration.
+ * @template Value - The type of values yielded by the iterator
+ */
 export type BaseSyncIterator<Value> = IteratorObject<Value, unknown, unknown>;
+
+/**
+ * Union type representing any kind of iterator that can be processed.
+ * Includes iterables, sync iterators, and async iterators.
+ * @template Value - The type of values in the iterator
+ */
 export type BaseIterator<Value> =
   | Iterable<Value>
   | BaseSyncIterator<Value>
   | BaseAsyncIterator<Value>;
 
+/**
+ * The main Iterup type that combines base async iterator functionality
+ * with extension methods and overrides. This is the enhanced iterator
+ * interface that provides functional programming capabilities.
+ *
+ * @template Value - The type of values yielded by the iterator
+ */
 export type Iterup<Value> = Omit<BaseAsyncIterator<Value>, Excludes<Value>> &
   Overrides<Value> &
   Extensions<Value> & {
     [IterupID]: {};
   };
 
+/**
+ * Creates an Iterup instance from an async iterator by wrapping it with
+ * extension methods and overrides using a Proxy.
+ *
+ * @template Value - The type of values yielded by the iterator
+ * @param iterator - The async iterator to wrap
+ * @returns An enhanced Iterup instance with additional methods
+ *
+ * @internal This function is used internally by the main iterup function
+ */
 export function fromAsyncIterator<Value>(
   iterator: BaseAsyncIterator<Value>
 ): Iterup<Value> {
@@ -99,6 +135,16 @@ export function fromAsyncIterator<Value>(
   return proxy as Iterup<Value>;
 }
 
+/**
+ * Creates an Iterup instance from any iterable (arrays, sets, etc.) by
+ * converting it to an async generator and then wrapping it.
+ *
+ * @template Value - The type of values in the iterable
+ * @param array - The iterable to wrap (despite the name, works with any iterable)
+ * @returns An enhanced Iterup instance
+ *
+ * @internal This function is used internally by the main iterup function
+ */
 function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
   const iterator = async function* () {
     for (const value of array) {
@@ -109,6 +155,33 @@ function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
   return fromAsyncIterator(iterator());
 }
 
+/**
+ * Main entry point for creating an Iterup instance from any iterator type.
+ * Automatically detects whether the input is an async iterator or regular iterable
+ * and applies the appropriate wrapping.
+ *
+ * @template Value - The type of values in the collection
+ * @param collection - Any iterator, iterable, or async iterator to enhance
+ * @returns An Iterup instance with functional programming methods
+ *
+ * @example
+ * ```ts
+ * // From array
+ * const fromArray = iterup([1, 2, 3, 4]);
+ *
+ * // From async generator
+ * async function* asyncGen() {
+ *   yield 1; yield 2; yield 3;
+ * }
+ * const fromAsync = iterup(asyncGen());
+ *
+ * // Chain operations
+ * const result = await iterup([1, 2, 3, 4, 5])
+ *   .map(x => x * 2)
+ *   .filter(x => x > 5)
+ *   .collect();
+ * ```
+ */
 export function iterup<Value>(collection: BaseIterator<Value>): Iterup<Value> {
   if (isAsyncIterator(collection)) {
     return fromAsyncIterator(collection);
