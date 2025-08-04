@@ -276,7 +276,7 @@ describe("range", () => {
 
 describe("cycle", () => {
   test("should repeat the iterator", async () => {
-    const collection = await iterup({ from: 1, to: 2, inclusive: true })
+    const collection = await iterup({ from: 1, to: 2 })
       .map((value) => `value: ${value}`)
       .cycle()
       .take(6)
@@ -293,7 +293,7 @@ describe("cycle", () => {
   });
 
   test("should repeat the iterator x amount", async () => {
-    const collection = await iterup({ from: 1, to: 2, inclusive: true })
+    const collection = await iterup({ from: 1, to: 2 })
       .map((value) => `value: ${value}`)
       .cycle(2)
       .collect();

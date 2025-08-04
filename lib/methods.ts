@@ -313,36 +313,38 @@ export async function collect<Value>(
 
 /**
  * Configuration object for creating numeric ranges.
- * Defines the start point, optional end point, and whether the end is included.
+ * Defines the start point and optional end point (both inclusive).
  */
 export type RangeArgument = {
-  /** Starting number of the range (inclusive) */
-  from: number;
-  /** Ending number of the range (exclusive by default, inclusive if inclusive=true) */
+  /** Starting number of the range (inclusive, default: 0) */
+  from?: number;
+  /** Ending number of the range (inclusive, default: Number.MAX_SAFE_INTEGER) */
   to?: number;
-  /** Whether to include the 'to' value in the range (default: false) */
-  inclusive?: boolean;
 };
 
 /**
  * Creates an iterator that yields a sequence of numbers within a specified range.
  * Provides a convenient way to generate numeric sequences without pre-allocating arrays.
+ * Both start and end points are inclusive.
  *
  * @param options - Configuration object specifying the range parameters
- * @param options.from - Starting number (inclusive)
- * @param options.to - Ending number (exclusive by default, defaults to Number.MAX_SAFE_INTEGER)
- * @param options.inclusive - Whether to include the 'to' value (default: false)
+ * @param options.from - Starting number (inclusive, default: 0)
+ * @param options.to - Ending number (inclusive, default: Number.MAX_SAFE_INTEGER)
  * @returns An Iterup yielding numbers in the specified range
  *
  * @example
  * ```ts
- * // Basic range from 0 to 4 (exclusive)
+ * // Basic range from 0 to 5 (inclusive)
  * const basic = await range({ from: 0, to: 5 }).collect();
- * // result: [0, 1, 2, 3, 4]
+ * // result: [0, 1, 2, 3, 4, 5]
  *
- * // Inclusive range
- * const inclusive = await range({ from: 1, to: 3, inclusive: true }).collect();
+ * // Range from 1 to 3 (inclusive)
+ * const simple = await range({ from: 1, to: 3 }).collect();
  * // result: [1, 2, 3]
+ *
+ * // Range starting from 0 (using default from)
+ * const fromZero = await range({ to: 3 }).collect();
+ * // result: [0, 1, 2, 3]
  *
  * // Infinite range (be careful with collect()!)
  * const infinite = range({ from: 10 }); // 10, 11, 12, ...
@@ -351,22 +353,18 @@ export type RangeArgument = {
  *
  * // Used with iterup() overload
  * const shorthand = await iterup({ from: 0, to: 3 }).collect();
- * // result: [0, 1, 2]
+ * // result: [0, 1, 2, 3]
  * ```
  */
 export function range({
-  from,
+  from = 0,
   to = Number.MAX_SAFE_INTEGER,
-  inclusive = false,
 }: RangeArgument): Iterup<number> {
   if (from > to) return iterup([]);
 
   const generator = async function* () {
-    for (let count = from; count < to; count++) {
+    for (let count = from; count <= to; count++) {
       yield count;
-    }
-    if (inclusive) {
-      yield to;
     }
   };
 

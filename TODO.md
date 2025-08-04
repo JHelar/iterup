@@ -91,7 +91,8 @@ type Option<T> = T | None
 - collect ✅
 - range ✅
 - zip
-- cycle
+- cycle ✅
+- maxBy
 
 
 ### Numeric Iterators
@@ -101,3 +102,4 @@ type Option<T> = T | None
 
 ## Enhancements
 - Prevent rewrap of already iterup instances
+- Make range api only inclusive

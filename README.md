@@ -38,7 +38,7 @@ const numbers = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 console.log(numbers); // [8, 12]
 
 // Or generate and process a range
-const rangeResult = await iterup({ from: 1, to: 11 })
+const rangeResult = await iterup({ from: 1, to: 10 })
   .filterMap(n => n % 2 === 0 ? n : None)        // Keep only even numbers  
   .map(n => n * 2)                               // Double them
   .drop(1)                                       // Skip first result
@@ -69,13 +69,13 @@ import { iterup } from '@jhel/iterup'
 const numbers = iterup([1, 2, 3, 4, 5]);
 const result = await numbers.collect(); // [1, 2, 3, 4, 5]
 
-// From range (new overload)
+// From range
 const range1 = iterup({ from: 0, to: 5 });
-const rangeResult = await range1.collect(); // [0, 1, 2, 3, 4]
+const rangeResult = await range1.collect(); // [0, 1, 2, 3, 4, 5]
 
-// Inclusive range
-const range2 = iterup({ from: 1, to: 3, inclusive: true });
-const inclusiveResult = await range2.collect(); // [1, 2, 3]
+// Range with default from (starts at 0)
+const range2 = iterup({ to: 3 });
+const inclusiveResult = await range2.collect(); // [0, 1, 2, 3]
 
 // From set
 const uniqueNumbers = iterup(new Set([1, 2, 2, 3]));
@@ -121,11 +121,11 @@ console.log(firstEven); // "Even: 2"
 
 // Generate numeric ranges
 const numbers = await collect(range({ from: 0, to: 5 }));
-console.log(numbers); // [0, 1, 2, 3, 4]
+console.log(numbers); // [0, 1, 2, 3, 4, 5]
 
-// Inclusive range
-const inclusive = await collect(range({ from: 1, to: 3, inclusive: true }));
-console.log(inclusive); // [1, 2, 3]
+// Range with default from parameter
+const simple = await collect(range({ to: 3 }));
+console.log(simple); // [0, 1, 2, 3]
 
 // Infinite range (be careful with collect()!)
 const infinite = range({ from: 10 });
@@ -220,23 +220,22 @@ const asyncFlattened = await iterup([1, 2])
 
 #### `range(options)`
 
-Creates an iterator that yields a sequence of numbers within a specified range. Provides a convenient way to generate numeric sequences without pre-allocating arrays.
+Creates an iterator that yields a sequence of numbers within a specified range. Provides a convenient way to generate numeric sequences without pre-allocating arrays. Both start and end points are inclusive.
 
 **Parameters:**
-- `options.from` - Starting number (inclusive)
-- `options.to` - Ending number (exclusive by default, defaults to `Number.MAX_SAFE_INTEGER`)
-- `options.inclusive` - Whether to include the 'to' value (default: `false`)
+- `options.from` - Starting number (inclusive, default: `0`)
+- `options.to` - Ending number (inclusive, default: `Number.MAX_SAFE_INTEGER`)
 
 ```ts
 import { range } from '@jhel/iterup'
 
-// Basic range from 0 to 4 (exclusive)
+// Basic range from 0 to 5 (inclusive)
 const basic = await range({ from: 0, to: 5 }).collect();
-console.log(basic); // [0, 1, 2, 3, 4]
+console.log(basic); // [0, 1, 2, 3, 4, 5]
 
-// Inclusive range
-const inclusive = await range({ from: 1, to: 3, inclusive: true }).collect();
-console.log(inclusive); // [1, 2, 3]
+// Range from 1 to 3
+const simple = await range({ from: 1, to: 3 }).collect();
+console.log(simple); // [1, 2, 3]
 
 // Infinite range (be careful with collect()!)
 const infinite = range({ from: 10 }); // 10, 11, 12, ...
@@ -245,13 +244,17 @@ console.log(first5); // [10, 11, 12, 13, 14]
 
 // Used with iterup() overload
 const shorthand = await iterup({ from: 0, to: 3 }).collect();
-console.log(shorthand); // [0, 1, 2]
+console.log(shorthand); // [0, 1, 2, 3]
+
+// Using default from parameter (starts at 0)
+const defaultFrom = await range({ to: 4 }).collect();
+console.log(defaultFrom); // [0, 1, 2, 3, 4]
 
 // Combine with other operations
 const evenSquares = await range({ from: 0, to: 10 })
   .filterMap(n => n % 2 === 0 ? n * n : None)
   .collect();
-console.log(evenSquares); // [0, 4, 16, 36, 64]
+console.log(evenSquares); // [0, 4, 16, 36, 64, 100]
 
 // Process in chunks
 const processInBatches = async () => {
@@ -393,7 +396,7 @@ const evenSum = await iterup([1, 2, 3, 4, 5, 6])
 console.log(evenSum); // 12 (2 + 4 + 6)
 
 // Sum a range
-const rangeSum = await iterup({ from: 1, to: 6 }).sum();
+const rangeSum = await iterup({ from: 1, to: 5 }).sum();
 console.log(rangeSum); // 15 (1 + 2 + 3 + 4 + 5)
 
 // Sum with transformations
@@ -432,7 +435,7 @@ const pattern = await iterup([1, 2])
 console.log(pattern); // [10, 20, 10, 20]
 
 // Use with ranges
-const repeatedRange = await iterup({ from: 1, to: 4 })
+const repeatedRange = await iterup({ from: 1, to: 3 })
   .cycle(2)
   .collect();
 console.log(repeatedRange); // [1, 2, 3, 1, 2, 3]
@@ -527,7 +530,7 @@ const processedData = await iterup(fetchPages())
 // Process numeric sequences without creating large arrays
 const processSequence = async () => {
   // Generate and process a large range efficiently
-  const result = await iterup({ from: 0, to: 1000000 })
+  const result = await iterup({ from: 0, to: 999999 })
     .filterMap(n => n % 1000 === 0 ? n : None)    // Only process every 1000th number
     .map(async n => {
       // Simulate async processing
