@@ -578,9 +578,11 @@ export function cycle<Value>(
   cycles = Infinity
 ): Iterup<Value> {
   const generator = async function* () {
+    if (cycles <= 0) return;
+
     const values = await collect(iterator);
     for (let cycle = 0; cycle < cycles; cycle++) {
-      for await (const value of values) {
+      for (const value of values) {
         yield value;
       }
     }

@@ -305,6 +305,24 @@ describe("cycle", () => {
       `value: 2`,
     ]);
   });
+
+  test("should handle zero cycles", async () => {
+    const collection = await iterup({ from: 1, to: 2 })
+      .map((value) => `value: ${value}`)
+      .cycle(0)
+      .collect();
+
+    expect(collection).toEqual([]);
+  });
+
+  test("should handle negative cycles", async () => {
+    const collection = await iterup({ from: 1, to: 2 })
+      .map((value) => `value: ${value}`)
+      .cycle(-1)
+      .collect();
+
+    expect(collection).toEqual([]);
+  });
 });
 
 describe("numeric instance", () => {
