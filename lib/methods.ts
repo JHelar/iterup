@@ -417,3 +417,70 @@ export async function sum<Value extends number>(
   }
   return sum;
 }
+
+/**
+ * Repeats the values from the iterator for a specified number of cycles.
+ * The input iterator is fully consumed and cached, then the values are yielded
+ * repeatedly for the specified number of cycles. Defaults to infinite cycles.
+ *
+ * @template Value - The type of values in the iterator
+ * @param iterator - The iterator whose values should be cycled
+ * @param cycles - Number of times to repeat the sequence (default: Infinity for infinite cycling)
+ * @returns An Iterup that yields the original values repeatedly
+ *
+ * @example
+ * ```ts
+ * // Cycle through values 3 times
+ * const result = await iterup([1, 2, 3])
+ *   .cycle(3)
+ *   .collect();
+ * // result: [1, 2, 3, 1, 2, 3, 1, 2, 3]
+ *
+ * // Infinite cycling (use with take() to avoid infinite loops)
+ * const infinite = await iterup(['A', 'B', 'C'])
+ *   .cycle()
+ *   .take(7)
+ *   .collect();
+ * // result: ['A', 'B', 'C', 'A', 'B', 'C', 'A']
+ *
+ * // Cycle with transformations
+ * const pattern = await iterup([1, 2])
+ *   .cycle(2)
+ *   .map(n => n * 10)
+ *   .collect();
+ * // result: [10, 20, 10, 20]
+ *
+ * // Use with ranges
+ * const repeatedRange = await iterup({ from: 1, to: 4 })
+ *   .cycle(2)
+ *   .collect();
+ * // result: [1, 2, 3, 1, 2, 3]
+ *
+ * // Common pattern: cycling through options
+ * const colors = ['red', 'green', 'blue'];
+ * const colorCycle = iterup(colors).cycle();
+ * const assignments = await iterup(['item1', 'item2', 'item3', 'item4', 'item5'])
+ *   .enumerate()
+ *   .map(async ([item, index]) => {
+ *     const colorIterator = colorCycle.drop(index).take(1);
+ *     const color = (await colorIterator.collect())[0];
+ *     return { item, color };
+ *   })
+ *   .collect();
+ * ```
+ */
+export function cycle<Value>(
+  iterator: BaseIterator<Value>,
+  cycles = Infinity
+): Iterup<Value> {
+  const generator = async function* () {
+    const values = await collect(iterator);
+    for (let cycle = 0; cycle < cycles; cycle++) {
+      for await (const value of values) {
+        yield value;
+      }
+    }
+  };
+
+  return fromAsyncIterator(generator());
+}

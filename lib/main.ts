@@ -29,4 +29,5 @@ export {
   drop,
   range,
   sum,
+  cycle,
 } from "./methods";

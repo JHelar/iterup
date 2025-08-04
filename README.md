@@ -107,7 +107,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, cycle, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -151,6 +151,19 @@ console.log(total); // 15
 // Combine with other operations
 const evenSum = await sum(filterMap(data, (n) => n % 2 === 0 ? n : None));
 console.log(evenSum); // 12 (sum of even numbers: 2 + 4)
+
+// Cycle through values directly
+const cycledData = await collect(cycle([1, 2, 3], 2));
+console.log(cycledData); // [1, 2, 3, 1, 2, 3]
+
+// Combine cycle with other operations
+const repeatedAndDoubled = await collect(
+  map(
+    take(cycle(['A', 'B']), 5),
+    char => char.toLowerCase()
+  )
+);
+console.log(repeatedAndDoubled); // ['a', 'b', 'a', 'b', 'a']
 ```
 
 ### Core Methods
@@ -393,6 +406,56 @@ console.log(squaredSum); // 14 (1² + 2² + 3²)
 // iterup(['a', 'b', 'c']).sum(); // TypeScript error - not numeric
 ```
 
+#### `.cycle(cycles?)`
+
+Repeats the values from the iterator for a specified number of cycles. The input iterator is fully consumed and cached, then the values are yielded repeatedly. Defaults to infinite cycles if no parameter is provided.
+
+```ts
+// Cycle through values 3 times
+const result = await iterup([1, 2, 3])
+  .cycle(3)
+  .collect();
+console.log(result); // [1, 2, 3, 1, 2, 3, 1, 2, 3]
+
+// Infinite cycling (use with take() to avoid infinite loops)
+const infinite = await iterup(['A', 'B', 'C'])
+  .cycle()
+  .take(7)
+  .collect();
+console.log(infinite); // ['A', 'B', 'C', 'A', 'B', 'C', 'A']
+
+// Cycle with transformations
+const pattern = await iterup([1, 2])
+  .cycle(2)
+  .map(n => n * 10)
+  .collect();
+console.log(pattern); // [10, 20, 10, 20]
+
+// Use with ranges
+const repeatedRange = await iterup({ from: 1, to: 4 })
+  .cycle(2)
+  .collect();
+console.log(repeatedRange); // [1, 2, 3, 1, 2, 3]
+
+// Common pattern: cycling through a repeating sequence
+const colors = ['red', 'green', 'blue'];
+const colorAssignments = await iterup(['item1', 'item2', 'item3', 'item4', 'item5'])
+  .enumerate()
+  .map(([item, index]) => ({
+    item,
+    color: colors[index % colors.length] // Manual cycling
+  }))
+  .collect();
+
+// Or using the cycle method for cleaner code
+const items = ['item1', 'item2', 'item3', 'item4', 'item5'];
+const colorCycle = await iterup(colors).cycle().take(items.length).collect();
+const assignments = items.map((item, index) => ({
+  item,
+  color: colorCycle[index]
+}));
+```
+
 ### The Option Type
 
 The `Option<T>` type represents a value that can either be present (`T`) or absent (`None`). It's used in methods like `filterMap` and `findMap` to indicate whether a value should be included in the result.
@@ -551,6 +614,18 @@ const totalScore = await iterup(scores).sum();
 const highScoresSum = await iterup(scores)
   .filterMap(score => score >= 90 ? score : None)
   .sum(); // Sum only scores >= 90
+
+// Create repeating patterns for data processing
+const statusPattern = ['pending', 'processing', 'complete'];
+const taskStatuses = await iterup(['task1', 'task2', 'task3', 'task4', 'task5', 'task6'])
+  .enumerate()
+  .map(([task, index], _) => {
+    const statusCycle = iterup(statusPattern).cycle();
+    return statusCycle.drop(index % statusPattern.length).take(1);
+  })
+  .flatMap(statusIter => statusIter)
+  .collect();
+// Creates cycling status pattern for tasks
 ```
 
 ### Lazy Evaluation Benefits

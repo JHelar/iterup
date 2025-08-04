@@ -77,19 +77,27 @@ type Option<T> = T | None
 - overhead of Some implementation
 
 ## Iterators
-- filterMap
-- filterFind
-- enumerate
-- map
-- flatMap
-- drop
-- take
-- filter
-- collect
-- range
+- filterMap ✅
+- filterFind ✅
+- enumerate ✅
+- map ✅
+- mapWhile
+- flatMap ✅
+- drop ✅
+- dropWhile
+- take ✅
+- takeWhile
+- filter ✅
+- collect ✅
+- range ✅
+- zip
+- cycle
+
 
 ### Numeric Iterators
-- sum
+- sum ✅
+- max
+- min
 
 ## Enhancements
 - Prevent rewrap of already iterup instances

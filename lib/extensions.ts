@@ -10,6 +10,7 @@
 import type { BaseIterator, Iterup, Option } from "./core";
 import {
   collect,
+  cycle,
   drop,
   enumerate,
   filter,
@@ -78,6 +79,8 @@ export type Extensions<Value> = {
   take(count: number): Iterup<Value>;
 
   drop(count: number): Iterup<Value>;
+
+  cycle(cycles?: number): Iterup<Value>;
 };
 
 /**
@@ -96,6 +99,7 @@ export const Extensions: Record<keyof Extensions<{}>, any> = {
   flatMap,
   map,
   filter,
+  cycle,
 };
 
 export type NumericExtensions<Value> = {

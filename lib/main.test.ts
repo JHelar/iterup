@@ -274,6 +274,39 @@ describe("range", () => {
   });
 });
 
+describe("cycle", () => {
+  test("should repeat the iterator", async () => {
+    const collection = await iterup({ from: 1, to: 2, inclusive: true })
+      .map((value) => `value: ${value}`)
+      .cycle()
+      .take(6)
+      .collect();
+
+    expect(collection).toEqual([
+      `value: 1`,
+      `value: 2`,
+      `value: 1`,
+      `value: 2`,
+      `value: 1`,
+      `value: 2`,
+    ]);
+  });
+
+  test("should repeat the iterator x amount", async () => {
+    const collection = await iterup({ from: 1, to: 2, inclusive: true })
+      .map((value) => `value: ${value}`)
+      .cycle(2)
+      .collect();
+
+    expect(collection).toEqual([
+      `value: 1`,
+      `value: 2`,
+      `value: 1`,
+      `value: 2`,
+    ]);
+  });
+});
+
 describe("numeric instance", () => {
   describe("sum", () => {
     test("should sum a numeric iterator", async () => {
