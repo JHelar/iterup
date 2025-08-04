@@ -17,6 +17,7 @@ import {
   findMap,
   flatMap,
   map,
+  sum,
   take,
 } from "./methods";
 
@@ -95,4 +96,12 @@ export const Extensions: Record<keyof Extensions<{}>, any> = {
   flatMap,
   map,
   filter,
+};
+
+export type NumericExtensions<Value> = {
+  sum(): Promise<number>;
+};
+
+export const NumericExtensions: Record<keyof NumericExtensions<{}>, any> = {
+  sum,
 };

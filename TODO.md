@@ -87,3 +87,9 @@ type Option<T> = T | None
 - filter
 - collect
 - range
+
+### Numeric Iterators
+- sum
+
+## Enhancements
+- Prevent rewrap of already iterup instances

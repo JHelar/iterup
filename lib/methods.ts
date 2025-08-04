@@ -372,3 +372,48 @@ export function range({
 
   return fromAsyncIterator(generator());
 }
+
+/**
+ * Calculates the sum of all numeric values in the iterator.
+ * This method is only available for Iterup instances that contain numbers.
+ *
+ * @template Value - The numeric type of values in the iterator (must extend number)
+ * @param iterator - The iterator containing numeric values to sum
+ * @returns Promise resolving to the total sum of all values
+ * @throws {TypeError} If the iterator contains non-numeric values
+ *
+ * @example
+ * ```ts
+ * // Sum an array of numbers
+ * const total = await iterup([1, 2, 3, 4, 5]).sum();
+ * // result: 15
+ *
+ * // Sum after filtering and mapping
+ * const evenSum = await iterup([1, 2, 3, 4, 5, 6])
+ *   .filterMap(n => n % 2 === 0 ? n : None)
+ *   .sum();
+ * // result: 12 (2 + 4 + 6)
+ *
+ * // Sum a range
+ * const rangeSum = await iterup({ from: 1, to: 6 }).sum();
+ * // result: 15 (1 + 2 + 3 + 4 + 5)
+ *
+ * // Sum with transformations
+ * const squaredSum = await iterup([1, 2, 3])
+ *   .map(n => n * n)
+ *   .sum();
+ * // result: 14 (1² + 2² + 3²)
+ * ```
+ */
+export async function sum<Value extends number>(
+  iterator: BaseIterator<Value>
+): Promise<number> {
+  let sum = 0;
+  for await (const value of iterator) {
+    if (typeof value !== "number")
+      throw new TypeError("sum is not supported for non numeric iterators");
+
+    sum += value;
+  }
+  return sum;
+}

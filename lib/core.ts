@@ -1,4 +1,4 @@
-import { Extensions } from "./extensions";
+import { Extensions, NumericExtensions } from "./extensions";
 import { range, RangeArgument } from "./methods";
 import { OverrideFunctions, type Overrides } from "./overrides";
 import { isAsyncIterator, isIterable, isIterator } from "./utils";
@@ -80,6 +80,15 @@ export type BaseIterator<Value> =
   | BaseSyncIterator<Value>
   | BaseAsyncIterator<Value>;
 
+type IterupBase<Value> = Omit<BaseAsyncIterator<Value>, Excludes<Value>> &
+  Overrides<Value> &
+  Extensions<Value> & {
+    [IterupID]: {};
+  };
+
+type IterupNumeric<Value extends number> = IterupBase<Value> &
+  NumericExtensions<Value>;
+
 /**
  * The main Iterup type that combines base async iterator functionality
  * with extension methods and overrides. This is the enhanced iterator
@@ -87,12 +96,9 @@ export type BaseIterator<Value> =
  *
  * @template Value - The type of values yielded by the iterator
  */
-export type Iterup<Value> = Omit<BaseAsyncIterator<Value>, Excludes<Value>> &
-  Overrides<Value> &
-  Extensions<Value> & {
-    [IterupID]: {};
-  };
-
+export type Iterup<Value> = Value extends number
+  ? IterupNumeric<Value>
+  : IterupBase<Value>;
 /**
  * Creates an Iterup instance from an async iterator by wrapping it with
  * extension methods and overrides using a Proxy.
@@ -112,6 +118,16 @@ export function fromAsyncIterator<Value>(
       if (extension) {
         return function (...args: any[]) {
           return (extension as any).apply(null, [target, ...args] as any);
+        };
+      }
+      const numericExtension =
+        NumericExtensions[prop as keyof typeof NumericExtensions];
+      if (numericExtension) {
+        return function (...args: any[]) {
+          return (numericExtension as any).apply(null, [
+            target,
+            ...args,
+          ] as any);
         };
       }
 

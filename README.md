@@ -107,7 +107,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, range, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -143,6 +143,14 @@ const processed = await collect(
   )
 );
 console.log(processed); // [4, 6] (dropped first, doubled, took 2)
+
+// Calculate sum directly
+const total = await sum([1, 2, 3, 4, 5]);
+console.log(total); // 15
+
+// Combine with other operations
+const evenSum = await sum(filterMap(data, (n) => n % 2 === 0 ? n : None));
+console.log(evenSum); // 12 (sum of even numbers: 2 + 4)
 ```
 
 ### Core Methods
@@ -356,6 +364,35 @@ const same = await iterup([1, 2, 3])
   .toArray(); // [2, 4, 6]
 ```
 
+#### `.sum()` (Numeric Only)
+
+Calculates the sum of all numeric values in the iterator. This method is only available for Iterup instances that contain numbers and consumes the entire iterator.
+
+```ts
+// Sum an array of numbers
+const total = await iterup([1, 2, 3, 4, 5]).sum();
+console.log(total); // 15
+
+// Sum after filtering and mapping
+const evenSum = await iterup([1, 2, 3, 4, 5, 6])
+  .filterMap(n => n % 2 === 0 ? n : None)
+  .sum();
+console.log(evenSum); // 12 (2 + 4 + 6)
+
+// Sum a range
+const rangeSum = await iterup({ from: 1, to: 6 }).sum();
+console.log(rangeSum); // 15 (1 + 2 + 3 + 4 + 5)
+
+// Sum with transformations
+const squaredSum = await iterup([1, 2, 3])
+  .map(n => n * n)
+  .sum();
+console.log(squaredSum); // 14 (1² + 2² + 3²)
+
+// Only works with numeric iterators
+// iterup(['a', 'b', 'c']).sum(); // TypeScript error - not numeric
+```
+
 ### The Option Type
 
 The `Option<T>` type represents a value that can either be present (`T`) or absent (`None`). It's used in methods like `filterMap` and `findMap` to indicate whether a value should be included in the result.
@@ -507,6 +544,13 @@ const enrichedUsers = await iterup(users)
     return isValid ? formatUser(enrichedUser) : None;
   })
   .collect();
+
+// Calculate metrics on numeric data
+const scores = [85, 92, 78, 96, 88, 91];
+const totalScore = await iterup(scores).sum();
+const highScoresSum = await iterup(scores)
+  .filterMap(score => score >= 90 ? score : None)
+  .sum(); // Sum only scores >= 90
 ```
 
 ### Lazy Evaluation Benefits

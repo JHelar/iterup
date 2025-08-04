@@ -176,7 +176,7 @@ describe("collect", () => {
   });
 
   test("should work with empty iterators", async () => {
-    const result = await iterup([])
+    const result = await iterup([] as number[])
       .map((x) => x)
       .collect();
     expect(result).toEqual([]);
@@ -271,5 +271,26 @@ describe("range", () => {
     const collection = await iterup({ from: 10 }).take(5).collect();
 
     expect(collection).toEqual([10, 11, 12, 13, 14]);
+  });
+});
+
+describe("numeric instance", () => {
+  describe("sum", () => {
+    test("should sum a numeric iterator", async () => {
+      const actual = await iterup({ from: 1 })
+        .take(3)
+        .map(() => 10)
+        .sum();
+      expect(actual).toEqual(30);
+    });
+
+    test("should throw error for non numeric iterator", async () => {
+      const actual = (
+        iterup({ from: 1 })
+          .take(3)
+          .map(() => "Ten") as any
+      ).sum();
+      expect(actual).rejects.toThrowError(TypeError);
+    });
   });
 });

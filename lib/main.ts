@@ -28,4 +28,5 @@ export {
   take,
   drop,
   range,
+  sum,
 } from "./methods";
