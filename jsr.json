@@ -1,5 +1,5 @@
 {
   "name": "@jhel/iterup",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "exports": "./lib/main.ts"
 }
