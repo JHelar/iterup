@@ -417,6 +417,112 @@ export async function sum<Value extends number>(
 }
 
 /**
+ * Finds the minimum value among all numeric values in the iterator.
+ * This method is only available for Iterup instances that contain numbers.
+ *
+ * @template Value - The numeric type of values in the iterator (must extend number)
+ * @param iterator - The iterator containing numeric values to compare
+ * @returns Promise resolving to the smallest value found
+ * @throws {TypeError} If the iterator contains non-numeric values
+ *
+ * @example
+ * ```ts
+ * // Find minimum in an array
+ * const minimum = await iterup([5, 2, 8, 1, 9]).min();
+ * // result: 1
+ *
+ * // Find minimum after filtering
+ * const minEven = await iterup([1, 2, 3, 4, 5, 6])
+ *   .filterMap(n => n % 2 === 0 ? n : None)
+ *   .min();
+ * // result: 2
+ *
+ * // Find minimum in a range
+ * const rangeMin = await iterup({ from: 10, to: 20 }).min();
+ * // result: 10
+ *
+ * // Find minimum after transformations
+ * const transformedMin = await iterup([1, 2, 3, 4])
+ *   .map(n => n * n)
+ *   .min();
+ * // result: 1 (1²)
+ *
+ * // Combine with other operations
+ * const processedMin = await iterup({ from: 1, to: 10 })
+ *   .filterMap(n => n % 3 === 0 ? n * 2 : None)
+ *   .min();
+ * // result: 6 (3 * 2, smallest multiple of 3 doubled)
+ * ```
+ */
+export async function min<Value extends number>(
+  iterator: BaseIterator<Value>
+): Promise<number> {
+  let min = Number.MAX_SAFE_INTEGER;
+  for await (const value of iterator) {
+    if (typeof value !== "number")
+      throw new TypeError("min is not supported for non numeric iterators");
+
+    if (value < min) {
+      min = value;
+    }
+  }
+  return min;
+}
+
+/**
+ * Finds the maximum value among all numeric values in the iterator.
+ * This method is only available for Iterup instances that contain numbers.
+ *
+ * @template Value - The numeric type of values in the iterator (must extend number)
+ * @param iterator - The iterator containing numeric values to compare
+ * @returns Promise resolving to the largest value found
+ * @throws {TypeError} If the iterator contains non-numeric values
+ *
+ * @example
+ * ```ts
+ * // Find maximum in an array
+ * const maximum = await iterup([5, 2, 8, 1, 9]).max();
+ * // result: 9
+ *
+ * // Find maximum after filtering
+ * const maxEven = await iterup([1, 2, 3, 4, 5, 6])
+ *   .filterMap(n => n % 2 === 0 ? n : None)
+ *   .max();
+ * // result: 6
+ *
+ * // Find maximum in a range
+ * const rangeMax = await iterup({ from: 10, to: 20 }).max();
+ * // result: 20
+ *
+ * // Find maximum after transformations
+ * const transformedMax = await iterup([1, 2, 3, 4])
+ *   .map(n => n * n)
+ *   .max();
+ * // result: 16 (4²)
+ *
+ * // Combine with other operations
+ * const processedMax = await iterup({ from: 1, to: 10 })
+ *   .filterMap(n => n % 3 === 0 ? n * 2 : None)
+ *   .max();
+ * // result: 18 (9 * 2, largest multiple of 3 doubled)
+ * ```
+ */
+export async function max<Value extends number>(
+  iterator: BaseIterator<Value>
+): Promise<number> {
+  let max = Number.MIN_SAFE_INTEGER;
+  for await (const value of iterator) {
+    if (typeof value !== "number")
+      throw new TypeError("max is not supported for non numeric iterators");
+
+    if (value > max) {
+      max = value;
+    }
+  }
+  return max;
+}
+
+/**
  * Repeats the values from the iterator for a specified number of cycles.
  * The input iterator is fully consumed and cached, then the values are yielded
  * repeatedly for the specified number of cycles. Defaults to infinite cycles.

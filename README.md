@@ -107,7 +107,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, cycle, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, min, max, cycle, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -148,9 +148,19 @@ console.log(processed); // [4, 6] (dropped first, doubled, took 2)
 const total = await sum([1, 2, 3, 4, 5]);
 console.log(total); // 15
 
+// Find minimum and maximum
+const minimum = await min([5, 2, 8, 1, 9]);
+console.log(minimum); // 1
+
+const maximum = await max([5, 2, 8, 1, 9]);
+console.log(maximum); // 9
+
 // Combine with other operations
 const evenSum = await sum(filterMap(data, (n) => n % 2 === 0 ? n : None));
 console.log(evenSum); // 12 (sum of even numbers: 2 + 4)
+
+const evenMin = await min(filterMap(data, (n) => n % 2 === 0 ? n : None));
+console.log(evenMin); // 2 (smallest even number)
 
 // Cycle through values directly
 const cycledData = await collect(cycle([1, 2, 3], 2));
@@ -409,6 +419,64 @@ console.log(squaredSum); // 14 (1² + 2² + 3²)
 // iterup(['a', 'b', 'c']).sum(); // TypeScript error - not numeric
 ```
 
+#### `.min()` (Numeric Only)
+
+Finds the minimum value among all numeric values in the iterator. This method is only available for Iterup instances that contain numbers and consumes the entire iterator.
+
+```ts
+// Find minimum in an array
+const minimum = await iterup([5, 2, 8, 1, 9]).min();
+console.log(minimum); // 1
+
+// Find minimum after filtering
+const minEven = await iterup([1, 2, 3, 4, 5, 6])
+  .filterMap(n => n % 2 === 0 ? n : None)
+  .min();
+console.log(minEven); // 2
+
+// Find minimum in a range
+const rangeMin = await iterup({ from: 10, to: 20 }).min();
+console.log(rangeMin); // 10
+
+// Find minimum after transformations
+const transformedMin = await iterup([1, 2, 3, 4])
+  .map(n => n * n)
+  .min();
+console.log(transformedMin); // 1 (1²)
+
+// Only works with numeric iterators
+// iterup(['a', 'b', 'c']).min(); // TypeScript error - not numeric
+```
+
+#### `.max()` (Numeric Only)
+
+Finds the maximum value among all numeric values in the iterator. This method is only available for Iterup instances that contain numbers and consumes the entire iterator.
+
+```ts
+// Find maximum in an array
+const maximum = await iterup([5, 2, 8, 1, 9]).max();
+console.log(maximum); // 9
+
+// Find maximum after filtering
+const maxEven = await iterup([1, 2, 3, 4, 5, 6])
+  .filterMap(n => n % 2 === 0 ? n : None)
+  .max();
+console.log(maxEven); // 6
+
+// Find maximum in a range
+const rangeMax = await iterup({ from: 10, to: 20 }).max();
+console.log(rangeMax); // 20
+
+// Find maximum after transformations
+const transformedMax = await iterup([1, 2, 3, 4])
+  .map(n => n * n)
+  .max();
+console.log(transformedMax); // 16 (4²)
+
+// Only works with numeric iterators
+// iterup(['a', 'b', 'c']).max(); // TypeScript error - not numeric
+```
+
 #### `.cycle(cycles?)`
 
 Repeats the values from the iterator for a specified number of cycles. The input iterator is fully consumed and cached, then the values are yielded repeatedly. Defaults to infinite cycles if no parameter is provided.
@@ -614,9 +682,14 @@ const enrichedUsers = await iterup(users)
 // Calculate metrics on numeric data
 const scores = [85, 92, 78, 96, 88, 91];
 const totalScore = await iterup(scores).sum();
+const minScore = await iterup(scores).min();
+const maxScore = await iterup(scores).max();
 const highScoresSum = await iterup(scores)
   .filterMap(score => score >= 90 ? score : None)
   .sum(); // Sum only scores >= 90
+const topScore = await iterup(scores)
+  .filterMap(score => score >= 90 ? score : None)
+  .max(); // Highest score >= 90
 
 // Create repeating patterns for data processing
 const statusPattern = ['pending', 'processing', 'complete'];

@@ -93,13 +93,13 @@ type Option<T> = T | None
 - zip
 - cycle ✅
 - maxBy
-
+- minBy
 
 ### Numeric Iterators
 - sum ✅
-- max
-- min
+- max ✅
+- min ✅
 
 ## Enhancements
 - Prevent rewrap of already iterup instances
-- Make range api only inclusive
+- Make range api only inclusive ✅

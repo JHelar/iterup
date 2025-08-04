@@ -326,4 +326,36 @@ describe("numeric instance", () => {
       expect(actual).rejects.toThrowError(TypeError);
     });
   });
+
+  describe("min", () => {
+    test("should return the minimum value from an iterator", async () => {
+      const actual = await iterup([5, 4, 2, 0, -10, 890]).min();
+      expect(actual).toEqual(-10);
+    });
+
+    test("should throw error for non numeric iterator", async () => {
+      const actual = (
+        iterup({ from: 1 })
+          .take(3)
+          .map(() => "Ten") as any
+      ).min();
+      expect(actual).rejects.toThrowError(TypeError);
+    });
+  });
+
+  describe("max", () => {
+    test("should return the maximum value from an iterator", async () => {
+      const actual = await iterup([5, 4, 2, 890, 0, -10]).max();
+      expect(actual).toEqual(890);
+    });
+
+    test("should throw error for non numeric iterator", async () => {
+      const actual = (
+        iterup({ from: 1 })
+          .take(3)
+          .map(() => "Ten") as any
+      ).max();
+      expect(actual).rejects.toThrowError(TypeError);
+    });
+  });
 });
