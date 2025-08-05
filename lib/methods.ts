@@ -524,7 +524,7 @@ export async function max<Value extends number>(
 
 /**
  * Repeats the values from the iterator for a specified number of cycles.
- * The input iterator is fully consumed and cached, then the values are yielded
+ * The input iterator is consumed and cached, after the first cycle cached values are returned
  * repeatedly for the specified number of cycles. Defaults to infinite cycles.
  *
  * @template Value - The type of values in the iterator
@@ -580,10 +580,16 @@ export function cycle<Value>(
   const generator = async function* () {
     if (cycles <= 0) return;
 
-    const values = await collect(iterator);
+    const cachedValues: Value[] = [];
+    let initialCycle = true;
     for (let cycle = 0; cycle < cycles; cycle++) {
-      for (const value of values) {
+      initialCycle = cycle === 0;
+
+      for await (const value of initialCycle ? iterator : cachedValues) {
         yield value;
+        if (initialCycle) {
+          cachedValues.push(value);
+        }
       }
     }
   };

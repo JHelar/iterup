@@ -306,6 +306,34 @@ describe("cycle", () => {
     ]);
   });
 
+  test("should maintain lazy evaluation", async () => {
+    let mapCallCount = 0;
+    const collection = await iterup({ from: 1, to: 3 })
+      .map((value) => {
+        mapCallCount += 1;
+        return `value: ${value}`;
+      })
+      .cycle()
+      .take(2)
+      .collect();
+
+    expect(collection).toEqual([`value: 1`, `value: 2`]);
+    expect(mapCallCount).toEqual(2);
+  });
+
+  test("should cache the cycle", async () => {
+    let mapCallCount = 0;
+    await iterup({ from: 1, to: 3 })
+      .map((value) => {
+        mapCallCount += 1;
+        return `value: ${value}`;
+      })
+      .cycle(2)
+      .collect();
+
+    expect(mapCallCount).toEqual(3);
+  });
+
   test("should handle zero cycles", async () => {
     const collection = await iterup({ from: 1, to: 2 })
       .map((value) => `value: ${value}`)
