@@ -107,7 +107,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, min, max, cycle, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, min, max, cycle, zip, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -165,6 +165,19 @@ console.log(evenMin); // 2 (smallest even number)
 // Cycle through values directly
 const cycledData = await collect(cycle([1, 2, 3], 2));
 console.log(cycledData); // [1, 2, 3, 1, 2, 3]
+
+// Zip two iterators
+const zipped = await collect(zip([1, 2, 3], ['a', 'b', 'c']));
+console.log(zipped); // [[1, 'a'], [2, 'b'], [3, 'c']]
+
+// Combine operations
+const combined = await collect(
+  map(
+    zip([1, 2, 3], [10, 20, 30]),
+    ([a, b]) => a + b
+  )
+);
+console.log(combined); // [11, 22, 33]
 
 // Combine cycle with other operations
 const repeatedAndDoubled = await collect(
@@ -477,6 +490,46 @@ console.log(transformedMax); // 16 (4²)
 // iterup(['a', 'b', 'c']).max(); // TypeScript error - not numeric
 ```
 
+#### `.zip(anotherIterator)`
+
+Combines the current iterator with another iterator element-wise, yielding pairs of values until one iterator is exhausted. The resulting iterator stops when the shorter of the two input iterators is exhausted.
+
+```ts
+// Zip two arrays
+const result = await iterup([1, 2, 3]).zip(['a', 'b', 'c']).collect();
+console.log(result); // [[1, 'a'], [2, 'b'], [3, 'c']]
+
+// Zip arrays of different lengths (stops at shortest)
+const uneven = await iterup([1, 2, 3, 4]).zip(['a', 'b']).collect();
+console.log(uneven); // [[1, 'a'], [2, 'b']]
+
+// Zip with ranges
+const withRange = await iterup(['A', 'B', 'C']).zip(iterup({ from: 1, to: 3 })).collect();
+console.log(withRange); // [['A', 1], ['B', 2], ['C', 3]]
+
+// Zip and transform
+const combined = await iterup([1, 2, 3])
+  .zip([10, 20, 30])
+  .map(([a, b]) => a + b)
+  .collect();
+console.log(combined); // [11, 22, 33]
+
+// Common pattern: enumerate with custom start
+const customEnum = await iterup(['x', 'y', 'z'])
+  .zip(iterup({ from: 10 }))
+  .take(3)
+  .collect();
+console.log(customEnum); // [['x', 10], ['y', 11], ['z', 12]]
+
+// Zip multiple transformations
+const processed = await iterup([1, 2, 3])
+  .map(n => n * 2)
+  .zip(['a', 'b', 'c'])
+  .filterMap(([num, char]) => num > 2 ? `${char}${num}` : None)
+  .collect();
+console.log(processed); // ['a4', 'b6']
+```
+
 #### `.cycle(cycles?)`
 
 Repeats the values from the iterator for a specified number of cycles. The input iterator is fully consumed and cached, then the values are yielded repeatedly. Defaults to infinite cycles if no parameter is provided.
@@ -702,6 +755,15 @@ const taskStatuses = await iterup(['task1', 'task2', 'task3', 'task4', 'task5', 
   .flatMap(statusIter => statusIter)
   .collect();
 // Creates cycling status pattern for tasks
+
+// Zip data for parallel processing
+const tasks = ['task1', 'task2', 'task3'];
+const priorities = ['high', 'medium', 'low'];
+const taskList = await iterup(tasks)
+  .zip(priorities)
+  .map(([task, priority]) => ({ task, priority }))
+  .collect();
+// Creates: [{ task: 'task1', priority: 'high' }, ...]
 ```
 
 ### Lazy Evaluation Benefits

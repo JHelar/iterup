@@ -353,6 +353,33 @@ describe("cycle", () => {
   });
 });
 
+describe("zip", () => {
+  test("should combine two iterators", async () => {
+    const combined = await iterup([1, 2, 3]).zip([3, 2, 1]).collect();
+    expect(combined).toEqual([
+      [1, 3],
+      [2, 2],
+      [3, 1],
+    ]);
+  });
+
+  test("should return early if source iterator is shorter", async () => {
+    const combined = await iterup([1, 2]).zip([3, 2, 1]).collect();
+    expect(combined).toEqual([
+      [1, 3],
+      [2, 2],
+    ]);
+  });
+
+  test("should return early if given iterator is shorter", async () => {
+    const combined = await iterup([1, 2, 3]).zip([2, 1]).collect();
+    expect(combined).toEqual([
+      [1, 2],
+      [2, 1],
+    ]);
+  });
+});
+
 describe("numeric instance", () => {
   describe("sum", () => {
     test("should sum a numeric iterator", async () => {

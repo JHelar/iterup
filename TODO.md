@@ -90,7 +90,7 @@ type Option<T> = T | None
 - filter ✅
 - collect ✅
 - range ✅
-- zip
+- zip ✅
 - cycle ✅
 - maxBy
 - minBy
@@ -99,6 +99,9 @@ type Option<T> = T | None
 - sum ✅
 - max ✅
 - min ✅
+
+### String Iterators
+- join
 
 ## Enhancements
 - Prevent rewrap of already iterup instances

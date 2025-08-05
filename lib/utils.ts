@@ -9,6 +9,7 @@ import {
   BaseAsyncIterator,
   BaseSyncIterator,
   IterupID,
+  None,
   type Iterup,
 } from "./core";
 
@@ -121,4 +122,9 @@ export function isIterup<Value>(
   value: BaseAsyncIterator<Value>
 ): value is Iterup<Value> {
   return IterupID in value;
+}
+
+export function unwrapResult<Value>(result: IteratorResult<Value>) {
+  if (result.done) return None;
+  return result.value;
 }

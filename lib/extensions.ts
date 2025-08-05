@@ -22,6 +22,7 @@ import {
   min,
   sum,
   take,
+  zip,
 } from "./methods";
 
 /**
@@ -83,6 +84,10 @@ export type Extensions<Value> = {
   drop(count: number): Iterup<Value>;
 
   cycle(cycles?: number): Iterup<Value>;
+
+  zip<AnotherValue>(
+    iterator: BaseIterator<AnotherValue>
+  ): Iterup<[Value, AnotherValue]>;
 };
 
 /**
@@ -102,6 +107,7 @@ export const Extensions: Record<keyof Extensions<{}>, any> = {
   map,
   filter,
   cycle,
+  zip,
 };
 
 export type NumericExtensions<Value> = {

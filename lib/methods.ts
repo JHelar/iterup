@@ -1,4 +1,5 @@
 import {
+  BaseAsyncIterator,
   BaseIterator,
   fromAsyncIterator,
   iterup,
@@ -6,7 +7,7 @@ import {
   type Iterup,
   type Option,
 } from "./core";
-import { isAsyncIterator, isIterator } from "./utils";
+import { isAsyncIterator, isIterable, isIterator, unwrapResult } from "./utils";
 
 /**
  * Creates an iterator that yields pairs of [value, index] for each element.
@@ -524,8 +525,8 @@ export async function max<Value extends number>(
 
 /**
  * Repeats the values from the iterator for a specified number of cycles.
- * The input iterator is consumed and cached, after the first cycle cached values are returned
- * repeatedly for the specified number of cycles. Defaults to infinite cycles.
+ * The input iterator is consumed and cached during the first cycle, then cached values are yielded
+ * for subsequent cycles. This optimization avoids re-consuming the original iterator. Defaults to infinite cycles.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator whose values should be cycled
@@ -591,6 +592,82 @@ export function cycle<Value>(
           cachedValues.push(value);
         }
       }
+    }
+  };
+
+  return fromAsyncIterator(generator());
+}
+
+/**
+ * Combines two iterators element-wise, yielding pairs of values until one iterator is exhausted.
+ * The resulting iterator will stop when the shorter of the two input iterators is exhausted.
+ *
+ * @template Value - The type of values in the first iterator
+ * @template AnotherValue - The type of values in the second iterator
+ * @param iterator - The first iterator to zip
+ * @param anotherIterator - The second iterator to zip
+ * @returns An Iterup yielding [Value, AnotherValue] tuples
+ *
+ * @example
+ * ```ts
+ * // Zip two arrays
+ * const result = await zip([1, 2, 3], ['a', 'b', 'c']).collect();
+ * // result: [[1, 'a'], [2, 'b'], [3, 'c']]
+ *
+ * // Zip arrays of different lengths (stops at shortest)
+ * const uneven = await zip([1, 2, 3, 4], ['a', 'b']).collect();
+ * // result: [[1, 'a'], [2, 'b']]
+ *
+ * // Zip with ranges
+ * const withRange = await zip(['A', 'B', 'C'], iterup({ from: 1, to: 3 })).collect();
+ * // result: [['A', 1], ['B', 2], ['C', 3]]
+ *
+ * // Zip and transform
+ * const combined = await zip([1, 2, 3], [10, 20, 30])
+ *   .map(([a, b]) => a + b)
+ *   .collect();
+ * // result: [11, 22, 33]
+ *
+ * // Common pattern: enumerate with custom start
+ * const customEnum = await zip(['x', 'y', 'z'], iterup({ from: 10 }))
+ *   .take(3)
+ *   .collect();
+ * // result: [['x', 10], ['y', 11], ['z', 12]]
+ *
+ * // Zip with async iterators
+ * async function* asyncNumbers() {
+ *   for (let i = 1; i <= 3; i++) yield i;
+ * }
+ * const asyncZip = await zip(['a', 'b', 'c'], asyncNumbers()).collect();
+ * // result: [['a', 1], ['b', 2], ['c', 3]]
+ * ```
+ */
+export function zip<Value, AnotherValue>(
+  iterator: BaseIterator<Value>,
+  anotherIterator: BaseIterator<AnotherValue>
+): Iterup<[Value, AnotherValue]> {
+  const generator = async function* () {
+    if (isIterable(iterator)) {
+      iterator = Iterator.from(iterator);
+    }
+
+    if (isIterable(anotherIterator)) {
+      anotherIterator = Iterator.from(anotherIterator);
+    }
+
+    for (;;) {
+      const [oneResult, anotherResult] = await Promise.all([
+        (iterator as BaseAsyncIterator<Value>).next(),
+        (anotherIterator as BaseAsyncIterator<AnotherValue>).next(),
+      ]);
+
+      const oneValue = unwrapResult(oneResult);
+      if (oneValue === None) break;
+
+      const anotherValue = unwrapResult(anotherResult);
+      if (anotherValue === None) break;
+
+      yield [oneValue, anotherValue] as [Value, AnotherValue];
     }
   };
 
