@@ -107,7 +107,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, min, max, cycle, zip, None } from '@jhel/iterup'
+import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, min, max, cycle, zip, fold, reduce, forEach, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -178,6 +178,18 @@ const combined = await collect(
   )
 );
 console.log(combined); // [11, 22, 33]
+
+// Use fold and reduce directly
+const sumFold = await fold([1, 2, 3, 4], 0, (acc, val) => acc + val);
+console.log(sumFold); // 10
+
+const sumReduce = await reduce([1, 2, 3, 4], (acc, val) => acc + val);
+console.log(sumReduce); // 10
+
+// Side effects with forEach
+const logged = [];
+await forEach([1, 2, 3], (val) => logged.push(val * 2));
+console.log(logged); // [2, 4, 6]
 
 // Combine cycle with other operations
 const repeatedAndDoubled = await collect(
@@ -530,6 +542,103 @@ const processed = await iterup([1, 2, 3])
 console.log(processed); // ['a4', 'b6']
 ```
 
+#### `.fold(initialValue, fn)`
+
+Applies a function to each element and an accumulator, returning the final accumulated value. This is a fundamental operation for building custom aggregation functions.
+
+```ts
+// Sum using fold
+const sum = await iterup([1, 2, 3, 4]).fold(0, (acc, val) => acc + val);
+console.log(sum); // 10
+
+// Build a string
+const sentence = await iterup(['Hello', 'world', '!'])
+  .fold('', (acc, word) => acc === '' ? word : `${acc} ${word}`);
+console.log(sentence); // "Hello world !"
+
+// Count elements
+const count = await iterup([1, 2, 3, 4, 5]).fold(0, (acc, _) => acc + 1);
+console.log(count); // 5
+
+// Build an object from array
+const indexed = await iterup(['a', 'b', 'c'])
+  .enumerate()
+  .fold({}, (acc, [val, index]) => ({ ...acc, [index]: val }));
+console.log(indexed); // { 0: 'a', 1: 'b', 2: 'c' }
+
+// Complex aggregation
+const stats = await iterup([1, 2, 3, 4, 5])
+  .fold({ sum: 0, count: 0, max: 0 }, (acc, val) => ({
+    sum: acc.sum + val,
+    count: acc.count + 1,
+    max: Math.max(acc.max, val)
+  }));
+console.log(stats); // { sum: 15, count: 5, max: 5 }
+```
+
+#### `.reduce(fn)`
+
+Reduces the iterator to a single value using the first element as initial accumulator. Returns None if the iterator is empty.
+
+```ts
+// Sum using reduce
+const sum = await iterup([1, 2, 3, 4]).reduce((acc, val) => acc + val);
+console.log(sum); // 10
+
+// Find maximum
+const max = await iterup([5, 2, 8, 1, 9]).reduce((acc, val) => acc > val ? acc : val);
+console.log(max); // 9
+
+// Concatenate strings
+const combined = await iterup(['Hello', ' ', 'world']).reduce((acc, val) => acc + val);
+console.log(combined); // "Hello world"
+
+// Empty iterator returns None
+const empty = await iterup([]).reduce((acc, val) => acc + val);
+console.log(empty === None); // true
+
+// Single element returns that element
+const single = await iterup([42]).reduce((acc, val) => acc + val);
+console.log(single); // 42
+
+// Compare with fold - reduce doesn't need initial value
+const foldSum = await iterup([1, 2, 3]).fold(0, (acc, val) => acc + val); // 6
+const reduceSum = await iterup([1, 2, 3]).reduce((acc, val) => acc + val); // 6
+```
+
+#### `.forEach(fn)`
+
+Executes a function for each element in the iterator, primarily for side effects. This method consumes the iterator but returns void.
+
+```ts
+// Log each element
+await iterup([1, 2, 3]).forEach((value) => {
+  console.log(`Processing: ${value}`);
+});
+// Logs: "Processing: 1", "Processing: 2", "Processing: 3"
+
+// Update external state
+const results: string[] = [];
+await iterup(['a', 'b', 'c']).forEach((value) => {
+  results.push(value.toUpperCase());
+});
+console.log(results); // ['A', 'B', 'C']
+
+// Async side effects
+await iterup([1, 2, 3]).forEach(async (value) => {
+  await new Promise(resolve => setTimeout(resolve, 100));
+  console.log(`Delayed: ${value}`);
+});
+
+// Debugging in chains (note: forEach doesn't return an iterator)
+const results2 = [];
+await iterup([1, 2, 3, 4, 5])
+  .map(n => n * 2)
+  .filterMap(n => n > 5 ? n : None)
+  .forEach(n => results2.push(n)); // Collect for debugging
+console.log(results2); // [6, 8, 10]
+```
+
 #### `.cycle(cycles?)`
 
 Repeats the values from the iterator for a specified number of cycles. The input iterator is fully consumed and cached, then the values are yielded repeatedly. Defaults to infinite cycles if no parameter is provided.
@@ -764,6 +873,21 @@ const taskList = await iterup(tasks)
   .map(([task, priority]) => ({ task, priority }))
   .collect();
 // Creates: [{ task: 'task1', priority: 'high' }, ...]
+
+// Complex aggregation with fold
+const analytics = await iterup(scores)
+  .fold({ total: 0, count: 0, passed: 0 }, (acc, score) => ({
+    total: acc.total + score,
+    count: acc.count + 1,
+    passed: acc.passed + (score >= 80 ? 1 : 0)
+  }));
+const average = analytics.total / analytics.count;
+const passRate = analytics.passed / analytics.count;
+
+// Processing with side effects
+await iterup(scores)
+  .filterMap(score => score >= 90 ? score : None)
+  .forEach(score => console.log(`Excellent score: ${score}`));
 ```
 
 ### Lazy Evaluation Benefits

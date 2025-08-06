@@ -94,6 +94,9 @@ type Option<T> = T | None
 - cycle ✅
 - maxBy
 - minBy
+- forEach ✅
+- fold ✅
+- reduce ✅
 
 ### Numeric Iterators
 - sum ✅

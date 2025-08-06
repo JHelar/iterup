@@ -380,6 +380,50 @@ describe("zip", () => {
   });
 });
 
+describe("fold", () => {
+  test("should fold the iterator with the given value", async () => {
+    const actual = await iterup([1, 2, 3]).fold(
+      "Result: ",
+      (accumulator, value) => `${accumulator}, ${value}`
+    );
+    expect(actual).toEqual("Result: , 1, 2, 3");
+  });
+
+  test("should return initial value if iterator is empty", async () => {
+    const actual = await iterup([] as number[]).fold(
+      "Result: ",
+      (accumulator, value) => `${accumulator}, ${value}`
+    );
+    expect(actual).toEqual("Result: ");
+  });
+});
+
+describe("reduce", () => {
+  test("should reduce the iterator with the given value", async () => {
+    const actual = await iterup([1, 2, 3]).reduce(
+      (accumulator, value) => accumulator - value
+    );
+    expect(actual).toEqual(1 - 2 - 3);
+  });
+
+  test("should return None if iterator is empty", async () => {
+    const actual = await iterup([] as number[]).reduce(
+      (accumulator, value) => accumulator - value
+    );
+    expect(actual).toEqual(None);
+  });
+});
+
+describe("forEach", () => {
+  test("should iterate each element", async () => {
+    const elements: number[] = [];
+    await iterup([1, 2, 3]).forEach((value) => {
+      elements.push(value);
+    });
+    expect(elements).toEqual([1, 2, 3]);
+  });
+});
+
 describe("numeric instance", () => {
   describe("sum", () => {
     test("should sum a numeric iterator", async () => {

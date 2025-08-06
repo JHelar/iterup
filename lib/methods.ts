@@ -407,14 +407,12 @@ export function range({
 export async function sum<Value extends number>(
   iterator: BaseIterator<Value>
 ): Promise<number> {
-  let sum = 0;
-  for await (const value of iterator) {
+  return fold(iterator, 0, (sum, value) => {
     if (typeof value !== "number")
       throw new TypeError("sum is not supported for non numeric iterators");
 
-    sum += value;
-  }
-  return sum;
+    return sum + value;
+  });
 }
 
 /**
@@ -458,16 +456,13 @@ export async function sum<Value extends number>(
 export async function min<Value extends number>(
   iterator: BaseIterator<Value>
 ): Promise<number> {
-  let min = Number.MAX_SAFE_INTEGER;
-  for await (const value of iterator) {
+  return fold(iterator, Number.MAX_SAFE_INTEGER, (min, value) => {
     if (typeof value !== "number")
       throw new TypeError("min is not supported for non numeric iterators");
 
-    if (value < min) {
-      min = value;
-    }
-  }
-  return min;
+    if (value < min) return value;
+    return min;
+  });
 }
 
 /**
@@ -511,16 +506,13 @@ export async function min<Value extends number>(
 export async function max<Value extends number>(
   iterator: BaseIterator<Value>
 ): Promise<number> {
-  let max = Number.MIN_SAFE_INTEGER;
-  for await (const value of iterator) {
+  return fold(iterator, Number.MIN_SAFE_INTEGER, (max, value) => {
     if (typeof value !== "number")
       throw new TypeError("max is not supported for non numeric iterators");
 
-    if (value > max) {
-      max = value;
-    }
-  }
-  return max;
+    if (value > max) return value;
+    return max;
+  });
 }
 
 /**
@@ -672,4 +664,167 @@ export function zip<Value, AnotherValue>(
   };
 
   return fromAsyncIterator(generator());
+}
+
+/**
+ * Applies a function to each element of the iterator and an accumulator, returning the final accumulated value.
+ * This is a fundamental operation for building other aggregation functions. The accumulator is updated
+ * with each iteration using the provided function.
+ *
+ * @template Value - The type of values in the iterator
+ * @template NewValue - The type of the accumulator and return value
+ * @param iterator - The iterator to fold over
+ * @param initialValue - The initial value for the accumulator
+ * @param f - Function that takes (accumulator, value) and returns the new accumulator
+ * @returns Promise resolving to the final accumulated value
+ *
+ * @example
+ * ```ts
+ * // Sum using fold
+ * const sum = await fold([1, 2, 3, 4], 0, (acc, val) => acc + val);
+ * // result: 10
+ *
+ * // Build a string
+ * const sentence = await fold(['Hello', 'world', '!'], '', (acc, word) =>
+ *   acc === '' ? word : `${acc} ${word}`
+ * );
+ * // result: "Hello world !"
+ *
+ * // Count elements
+ * const count = await fold([1, 2, 3, 4, 5], 0, (acc, _) => acc + 1);
+ * // result: 5
+ *
+ * // Build an object
+ * const indexed = await fold(['a', 'b', 'c'], {}, (acc, val, index) => ({
+ *   ...acc,
+ *   [index]: val
+ * }));
+ * // result: { 0: 'a', 1: 'b', 2: 'c' }
+ *
+ * // Async accumulation
+ * const asyncSum = await fold([1, 2, 3], 0, async (acc, val) => {
+ *   await new Promise(resolve => setTimeout(resolve, 10));
+ *   return acc + val;
+ * });
+ * // result: 6
+ * ```
+ */
+export async function fold<Value, NewValue>(
+  iterator: BaseIterator<Value>,
+  initialValue: NewValue,
+  f: (accumulator: NewValue, value: Value) => NewValue | Promise<NewValue>
+): Promise<NewValue> {
+  let accumulator = initialValue;
+  for await (const value of iterator) {
+    accumulator = await f(accumulator, value);
+  }
+
+  return accumulator;
+}
+
+/**
+ * Reduces the iterator to a single value using the provided function.
+ * Unlike fold, reduce uses the first element as the initial accumulator value.
+ * Returns None if the iterator is empty.
+ *
+ * @template Value - The type of values in the iterator
+ * @param iterator - The iterator to reduce
+ * @param f - Function that takes (accumulator, value) and returns the new accumulator
+ * @returns Promise resolving to the reduced value or None if iterator is empty
+ *
+ * @example
+ * ```ts
+ * // Sum using reduce
+ * const sum = await reduce([1, 2, 3, 4], (acc, val) => acc + val);
+ * // result: 10
+ *
+ * // Find maximum
+ * const max = await reduce([5, 2, 8, 1, 9], (acc, val) => acc > val ? acc : val);
+ * // result: 9
+ *
+ * // Concatenate strings
+ * const combined = await reduce(['Hello', ' ', 'world'], (acc, val) => acc + val);
+ * // result: "Hello world"
+ *
+ * // Empty iterator returns None
+ * const empty = await reduce([], (acc, val) => acc + val);
+ * // result: None
+ *
+ * // Single element returns that element
+ * const single = await reduce([42], (acc, val) => acc + val);
+ * // result: 42
+ *
+ * // Async reduction
+ * const asyncMax = await reduce([1, 2, 3], async (acc, val) => {
+ *   await new Promise(resolve => setTimeout(resolve, 10));
+ *   return Math.max(acc, val);
+ * });
+ * // result: 3
+ * ```
+ */
+export async function reduce<Value>(
+  iterator: BaseIterator<Value>,
+  f: (accumulator: Value, value: Value) => Value | Promise<Value>
+): Promise<Value | None> {
+  if (isIterable(iterator)) {
+    iterator = Iterator.from(iterator);
+  }
+
+  const firstResult = unwrapResult(
+    await (iterator as BaseAsyncIterator<Value>).next()
+  );
+  if (firstResult === None) {
+    return None;
+  }
+
+  return fold(iterator, firstResult, f);
+}
+
+/**
+ * Executes a function for each element in the iterator, primarily for side effects.
+ * This method consumes the entire iterator but returns void. Useful for logging,
+ * updating external state, or other side-effect operations.
+ *
+ * @template Value - The type of values in the iterator
+ * @param iterator - The iterator to iterate over
+ * @param f - Function to execute for each value (can be async)
+ * @returns Promise that resolves when all elements have been processed
+ *
+ * @example
+ * ```ts
+ * // Log each element
+ * await forEach([1, 2, 3], (value) => {
+ *   console.log(`Processing: ${value}`);
+ * });
+ * // Logs: "Processing: 1", "Processing: 2", "Processing: 3"
+ *
+ * // Update external array
+ * const results: string[] = [];
+ * await forEach(['a', 'b', 'c'], (value) => {
+ *   results.push(value.toUpperCase());
+ * });
+ * // results: ['A', 'B', 'C']
+ *
+ * // Async side effects
+ * await forEach([1, 2, 3], async (value) => {
+ *   await new Promise(resolve => setTimeout(resolve, 100));
+ *   console.log(`Delayed: ${value}`);
+ * });
+ *
+ * // Use with chaining for debugging
+ * const result = await iterup([1, 2, 3, 4, 5])
+ *   .map(n => n * 2)
+ *   .filterMap(n => n > 5 ? n : None)
+ *   .forEach(n => console.log(`Filtered: ${n}`)) // Side effect
+ *   .collect();
+ * ```
+ */
+export async function forEach<Value>(
+  iterator: BaseIterator<Value>,
+  f: (value: Value) => void | Promise<void>
+): Promise<void> {
+  await fold(iterator, undefined, (_, value) => {
+    f(value);
+    return undefined;
+  });
 }

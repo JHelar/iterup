@@ -7,7 +7,7 @@
  * object maps method names to their implementations from the methods module.
  */
 
-import type { BaseIterator, Iterup, Option } from "./core";
+import type { BaseIterator, Iterup, None, Option } from "./core";
 import {
   collect,
   cycle,
@@ -17,9 +17,12 @@ import {
   filterMap,
   findMap,
   flatMap,
+  fold,
+  forEach,
   map,
   max,
   min,
+  reduce,
   sum,
   take,
   zip,
@@ -88,6 +91,17 @@ export type Extensions<Value> = {
   zip<AnotherValue>(
     iterator: BaseIterator<AnotherValue>
   ): Iterup<[Value, AnotherValue]>;
+
+  fold<NewValue>(
+    initialValue: NewValue,
+    f: (accumulator: NewValue, value: Value) => NewValue | Promise<NewValue>
+  ): Promise<NewValue>;
+
+  reduce(
+    f: (accumulator: Value, value: Value) => Value | Promise<Value>
+  ): Promise<Value | None>;
+
+  forEach(f: (value: Value) => void | Promise<void>): Promise<void>;
 };
 
 /**
@@ -108,6 +122,9 @@ export const Extensions: Record<keyof Extensions<{}>, any> = {
   filter,
   cycle,
   zip,
+  fold,
+  reduce,
+  forEach,
 };
 
 export type NumericExtensions<Value> = {
