@@ -107,5 +107,6 @@ type Option<T> = T | None
 - join
 
 ## Enhancements
-- Prevent rewrap of already iterup instances
+- Prevent rewrap of already iterup instances ✅
+- Only wrap iterup instance methods ✅
 - Make range api only inclusive ✅

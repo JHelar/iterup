@@ -117,7 +117,9 @@ export function fromAsyncIterator<Value>(
       const extension = Extensions[prop as keyof typeof Extensions];
       if (extension) {
         return function (...args: any[]) {
-          return (extension as any).apply(null, [target, ...args] as any);
+          return fromAsyncIterator(
+            (extension as any).apply(null, [target, ...args] as any)
+          );
         };
       }
       const numericExtension =
@@ -230,5 +232,5 @@ export function iterup<Value>(
     return fromIterable(collection);
   }
 
-  return range(collection);
+  return fromAsyncIterator(range(collection));
 }

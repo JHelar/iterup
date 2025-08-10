@@ -25,17 +25,14 @@ import { isAsyncIterator, isIterable, isIterator, unwrapResult } from "./utils";
  * // result: [['a', 0], ['b', 1], ['c', 2]]
  * ```
  */
-export function enumerate<Value>(
+export async function* enumerate<Value>(
   iterator: BaseIterator<Value>
-): Iterup<[Value, number]> {
-  const generator = async function* () {
-    let index = 0;
-    for await (const value of iterator) {
-      yield [value, index++] as [Value, number];
-    }
-  };
-
-  return fromAsyncIterator(generator());
+): BaseAsyncIterator<[Value, number]> {
+  let index = 0;
+  for await (const value of iterator) {
+    yield [value, index++] as [Value, number];
+  }
+  return;
 }
 
 /**
@@ -90,23 +87,20 @@ export async function findMap<FilterValue, Value>(
  * // result: [4, 8] (even numbers doubled)
  * ```
  */
-export function filterMap<FilterValue, Value>(
+export async function* filterMap<FilterValue, Value>(
   iterator: BaseIterator<Value>,
   f: (value: Value) => Option<FilterValue> | Promise<FilterValue>
-): Iterup<FilterValue> {
-  const generator = async function* () {
-    for await (const value of iterator) {
-      let newValue = f(value);
-      if (newValue instanceof Promise) {
-        newValue = await newValue;
-      }
-
-      if (newValue === None) continue;
-      yield newValue;
+): BaseAsyncIterator<FilterValue> {
+  for await (const value of iterator) {
+    let newValue = f(value);
+    if (newValue instanceof Promise) {
+      newValue = await newValue;
     }
-  };
 
-  return fromAsyncIterator(generator());
+    if (newValue === None) continue;
+    yield newValue;
+  }
+  return;
 }
 
 /**
@@ -127,21 +121,18 @@ export function filterMap<FilterValue, Value>(
  * // result: [2, 4, 6]
  * ```
  */
-export function map<Value, MapValue>(
+export async function* map<Value, MapValue>(
   iterator: BaseIterator<Value>,
   f: (value: Value) => MapValue | Promise<MapValue>
-): Iterup<MapValue> {
-  const generator = async function* () {
-    for await (const value of iterator) {
-      let newValue = f(value);
-      if (newValue instanceof Promise) {
-        newValue = await newValue;
-      }
-      yield newValue;
+): BaseAsyncIterator<MapValue> {
+  for await (const value of iterator) {
+    let newValue = f(value);
+    if (newValue instanceof Promise) {
+      newValue = await newValue;
     }
-  };
-
-  return fromAsyncIterator(generator());
+    yield newValue;
+  }
+  return;
 }
 
 /**
@@ -162,22 +153,19 @@ export function map<Value, MapValue>(
  * // result: [1, 2, 2, 4, 3, 6]
  * ```
  */
-export function flatMap<Value, MapValue>(
+export async function* flatMap<Value, MapValue>(
   iterator: BaseIterator<Value>,
   f: (value: Value) => BaseIterator<MapValue> | Promise<BaseIterator<MapValue>>
-): Iterup<MapValue> {
-  const generator = async function* () {
-    for await (const value of iterator) {
-      let newValues = f(value);
-      if (newValues instanceof Promise) {
-        newValues = await newValues;
-      }
-
-      yield* newValues;
+): BaseAsyncIterator<MapValue> {
+  for await (const value of iterator) {
+    let newValues = f(value);
+    if (newValues instanceof Promise) {
+      newValues = await newValues;
     }
-  };
 
-  return fromAsyncIterator(generator());
+    yield* newValues;
+  }
+  return;
 }
 
 /**
@@ -197,22 +185,20 @@ export function flatMap<Value, MapValue>(
  * // result: [3, 4, 5]
  * ```
  */
-export function drop<Value>(
+export async function* drop<Value>(
   iterator: BaseIterator<Value>,
   count: number
-): Iterup<Value> {
+): BaseAsyncIterator<Value> {
   if (count <= 0) {
-    return iterup(iterator);
+    yield* iterator;
   }
 
-  const generator = async function* () {
-    for await (const value of iterator) {
-      if (count-- > 0) continue;
-      yield value;
-    }
-  };
+  for await (const value of iterator) {
+    if (count-- > 0) continue;
+    yield value;
+  }
 
-  return fromAsyncIterator(generator());
+  return;
 }
 
 /**
@@ -232,22 +218,18 @@ export function drop<Value>(
  * // result: [1, 2, 3]
  * ```
  */
-export function take<Value>(
+export async function* take<Value>(
   iterator: BaseIterator<Value>,
   count: number
-): Iterup<Value> {
+): BaseAsyncIterator<Value> {
   if (count <= 0) {
-    return iterup([]);
+    return Iterator.from([]);
   }
 
-  const generator = async function* () {
-    for await (const value of iterator) {
-      yield value;
-      if (count-- <= 1) break;
-    }
-  };
-
-  return fromAsyncIterator(generator());
+  for await (const value of iterator) {
+    yield value;
+    if (count-- <= 1) break;
+  }
 }
 
 /**
@@ -357,19 +339,17 @@ export type RangeArgument = {
  * // result: [0, 1, 2, 3]
  * ```
  */
-export function range({
+export async function* range({
   from = 0,
   to = Number.MAX_SAFE_INTEGER,
-}: RangeArgument): Iterup<number> {
-  if (from > to) return iterup([]);
+}: RangeArgument): BaseAsyncIterator<number> {
+  if (from > to) {
+    return Iterator.from([]);
+  }
 
-  const generator = async function* () {
-    for (let count = from; count <= to; count++) {
-      yield count;
-    }
-  };
-
-  return fromAsyncIterator(generator());
+  for (let count = from; count <= to; count++) {
+    yield count;
+  }
 }
 
 /**
@@ -566,28 +546,26 @@ export async function max<Value extends number>(
  *   .collect();
  * ```
  */
-export function cycle<Value>(
+export async function* cycle<Value>(
   iterator: BaseIterator<Value>,
   cycles = Infinity
-): Iterup<Value> {
-  const generator = async function* () {
-    if (cycles <= 0) return;
+): BaseAsyncIterator<Value> {
+  if (cycles <= 0) {
+    return;
+  }
 
-    const cachedValues: Value[] = [];
-    let initialCycle = true;
-    for (let cycle = 0; cycle < cycles; cycle++) {
-      initialCycle = cycle === 0;
+  const cachedValues: Value[] = [];
+  let initialCycle = true;
+  for (let cycle = 0; cycle < cycles; cycle++) {
+    initialCycle = cycle === 0;
 
-      for await (const value of initialCycle ? iterator : cachedValues) {
-        yield value;
-        if (initialCycle) {
-          cachedValues.push(value);
-        }
+    for await (const value of initialCycle ? iterator : cachedValues) {
+      yield value;
+      if (initialCycle) {
+        cachedValues.push(value);
       }
     }
-  };
-
-  return fromAsyncIterator(generator());
+  }
 }
 
 /**
@@ -634,36 +612,33 @@ export function cycle<Value>(
  * // result: [['a', 1], ['b', 2], ['c', 3]]
  * ```
  */
-export function zip<Value, AnotherValue>(
+export async function* zip<Value, AnotherValue>(
   iterator: BaseIterator<Value>,
   anotherIterator: BaseIterator<AnotherValue>
-): Iterup<[Value, AnotherValue]> {
-  const generator = async function* () {
-    if (isIterable(iterator)) {
-      iterator = Iterator.from(iterator);
-    }
+): BaseAsyncIterator<[Value, AnotherValue]> {
+  if (isIterable(iterator)) {
+    iterator = Iterator.from(iterator);
+  }
 
-    if (isIterable(anotherIterator)) {
-      anotherIterator = Iterator.from(anotherIterator);
-    }
+  if (isIterable(anotherIterator)) {
+    anotherIterator = Iterator.from(anotherIterator);
+  }
 
-    for (;;) {
-      const [oneResult, anotherResult] = await Promise.all([
-        (iterator as BaseAsyncIterator<Value>).next(),
-        (anotherIterator as BaseAsyncIterator<AnotherValue>).next(),
-      ]);
+  for (;;) {
+    const [oneResult, anotherResult] = await Promise.all([
+      (iterator as BaseAsyncIterator<Value>).next(),
+      (anotherIterator as BaseAsyncIterator<AnotherValue>).next(),
+    ]);
 
-      const oneValue = unwrapResult(oneResult);
-      if (oneValue === None) break;
+    const oneValue = unwrapResult(oneResult);
+    if (oneValue === None) break;
 
-      const anotherValue = unwrapResult(anotherResult);
-      if (anotherValue === None) break;
+    const anotherValue = unwrapResult(anotherResult);
+    if (anotherValue === None) break;
 
-      yield [oneValue, anotherValue] as [Value, AnotherValue];
-    }
-  };
-
-  return fromAsyncIterator(generator());
+    yield [oneValue, anotherValue] as [Value, AnotherValue];
+  }
+  return;
 }
 
 /**
@@ -746,9 +721,9 @@ export async function fold<Value, NewValue>(
  * const combined = await reduce(['Hello', ' ', 'world'], (acc, val) => acc + val);
  * // result: "Hello world"
  *
- * // Empty iterator returns None
+ * // Empty iterator returns undefined
  * const empty = await reduce([], (acc, val) => acc + val);
- * // result: None
+ * // result: undefined
  *
  * // Single element returns that element
  * const single = await reduce([42], (acc, val) => acc + val);
@@ -765,7 +740,7 @@ export async function fold<Value, NewValue>(
 export async function reduce<Value>(
   iterator: BaseIterator<Value>,
   f: (accumulator: Value, value: Value) => Value | Promise<Value>
-): Promise<Value | None> {
+): Promise<Value | undefined> {
   if (isIterable(iterator)) {
     iterator = Iterator.from(iterator);
   }
@@ -774,7 +749,7 @@ export async function reduce<Value>(
     await (iterator as BaseAsyncIterator<Value>).next()
   );
   if (firstResult === None) {
-    return None;
+    return undefined;
   }
 
   return fold(iterator, firstResult, f);

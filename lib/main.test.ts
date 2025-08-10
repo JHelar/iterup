@@ -410,7 +410,7 @@ describe("reduce", () => {
     const actual = await iterup([] as number[]).reduce(
       (accumulator, value) => accumulator - value
     );
-    expect(actual).toEqual(None);
+    expect(actual).toBeUndefined();
   });
 });
 

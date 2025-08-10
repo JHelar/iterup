@@ -7,7 +7,7 @@
  * object maps method names to their implementations from the methods module.
  */
 
-import type { BaseIterator, Iterup, None, Option } from "./core";
+import type { BaseIterator, Iterup, Option } from "./core";
 import {
   collect,
   cycle,
@@ -99,7 +99,7 @@ export type Extensions<Value> = {
 
   reduce(
     f: (accumulator: Value, value: Value) => Value | Promise<Value>
-  ): Promise<Value | None>;
+  ): Promise<Value | undefined>;
 
   forEach(f: (value: Value) => void | Promise<void>): Promise<void>;
 };
