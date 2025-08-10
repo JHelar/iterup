@@ -182,6 +182,7 @@ export async function* drop<Value>(
 ): BaseAsyncIterator<Value> {
   if (count <= 0) {
     yield* iterator;
+    return;
   }
 
   for await (const value of iterator) {
@@ -246,7 +247,7 @@ export async function filter<Value>(
   f: (value: Value) => boolean | Promise<boolean>
 ): Promise<Value | undefined> {
   for await (const value of iterator) {
-    if (f(value)) {
+    if (await f(value)) {
       return value;
     }
   }
