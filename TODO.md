@@ -110,3 +110,4 @@ type Option<T> = T | None
 - Prevent rewrap of already iterup instances ✅
 - Only wrap iterup instance methods ✅
 - Make range api only inclusive ✅
+- look at promiselike for split of sync/async https://github.com/supermacro/neverthrow
