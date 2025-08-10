@@ -7,8 +7,6 @@
  *
  * @example
  * ```ts
- * import { iterup, None } from '@jhel/iterup';
- *
  * const result = await iterup([1, 2, 3, 4, 5])
  *   .map(x => x * 2)
  *   .filter(x => x > 5)

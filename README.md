@@ -1,18 +1,15 @@
 # @jhel/iterup
 
-A TypeScript async iterator utility library that provides lazy evaluation for efficient data processing. All operations are asynchronous by design, supporting both synchronous and asynchronous data sources and transformation functions. Operations like `map`, `filter`, and `filterMap` don't consume values or create intermediate arrays until you call a consuming method like `collect()` or `toArray()`.
-
-This makes it significantly more performant than chaining multiple `.map()`, `.filter()` operations on arrays directly, especially for large datasets, async operations, or when only partial consumption is needed.
+A TypeScript async iterator utility library with lazy evaluation for efficient data processing. All operations are asynchronous, supporting both sync and async data sources and transformations. Operations like `map`, `filter`, and `filterMap` don't consume values until you call `collect()` or `toArray()`.
 
 ## Features
 
-- 🚀 **Lazy evaluation** - Operations are deferred until consumption
-- ⚡ **Async-first design** - All operations support async/await patterns
-- 🔄 **Mixed sync/async support** - Works with sync arrays, async generators, and mixed transformation functions
+- 🚀 **Lazy evaluation** - Operations deferred until consumption
+- ⚡ **Async-first design** - All operations support async/await
+- 🔄 **Mixed sync/async support** - Works with arrays, generators, and async functions
 - 🔗 **Chainable API** - Fluent interface for readable code
 - 📦 **TypeScript first** - Full type safety with excellent IntelliSense
-- 🎯 **Memory efficient** - No intermediate arrays until you need them
-- 🛠️ **Rust-inspired** - Familiar Option type and iterator patterns
+- 🎯 **Memory efficient** - No intermediate arrays until needed
 
 ## Installation
 
@@ -37,15 +34,14 @@ const numbers = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
 console.log(numbers); // [8, 12]
 
-// Or generate and process a range
+// Generate and process a range
 const rangeResult = await iterup({ from: 1, to: 10 })
-  .filterMap(n => n % 2 === 0 ? n : None)        // Keep only even numbers  
-  .map(n => n * 2)                               // Double them
-  .drop(1)                                       // Skip first result
-  .take(2)                                       // Take next 2
-  .collect();                                    // Materialize the result
+  .filterMap(n => n % 2 === 0 ? n : None)
+  .map(n => n * 2)
+  .take(2)
+  .collect();
 
-console.log(rangeResult); // [8, 12]
+console.log(rangeResult); // [4, 8]
 ```
 
 ## API Reference
@@ -56,7 +52,7 @@ console.log(rangeResult); // [8, 12]
 
 #### `iterup(collection)` / `iterup(range)`
 
-Creates an Iterup instance from any iterable, sync iterator, async iterator, or range configuration. The result is always an async iterator for consistent API design.
+Creates an Iterup instance from any iterable, iterator, or range configuration.
 
 **Overloads:**
 - `iterup(collection)` - Wraps any iterable or iterator
@@ -73,17 +69,7 @@ const result = await numbers.collect(); // [1, 2, 3, 4, 5]
 const range1 = iterup({ from: 0, to: 5 });
 const rangeResult = await range1.collect(); // [0, 1, 2, 3, 4, 5]
 
-// Range with default from (starts at 0)
-const range2 = iterup({ to: 3 });
-const inclusiveResult = await range2.collect(); // [0, 1, 2, 3]
-
-// From set
-const uniqueNumbers = iterup(new Set([1, 2, 2, 3]));
-
-// From string
-const chars = iterup("hello");
-
-// From sync generator
+// From generators
 function* fibonacci() {
   let [a, b] = [0, 1];
   while (true) {
@@ -92,14 +78,6 @@ function* fibonacci() {
   }
 }
 const fibNumbers = iterup(fibonacci());
-
-// From async generator
-async function* asyncNumbers() {
-  for (let i = 1; i <= 5; i++) {
-    yield await Promise.resolve(i);
-  }
-}
-const asyncNums = iterup(asyncNumbers());
 ```
 
 ### Direct Function Usage
@@ -107,7 +85,7 @@ const asyncNums = iterup(asyncNumbers());
 You can also use the utility functions directly without creating an Iterup instance:
 
 ```ts
-import { filterMap, findMap, enumerate, collect, map, take, drop, range, sum, min, max, cycle, zip, fold, reduce, forEach, None } from '@jhel/iterup'
+import { filterMap, findMap, collect, map, range, sum, None } from '@jhel/iterup'
 
 const data = [1, 2, 3, 4, 5];
 
@@ -115,90 +93,13 @@ const data = [1, 2, 3, 4, 5];
 const result = await collect(filterMap(data, (n) => n % 2 === 0 ? n * 2 : None));
 console.log(result); // [4, 8]
 
-// Find and map the first match
-const firstEven = await findMap(data, (n) => n % 2 === 0 ? `Even: ${n}` : None);
-console.log(firstEven); // "Even: 2"
-
 // Generate numeric ranges
 const numbers = await collect(range({ from: 0, to: 5 }));
 console.log(numbers); // [0, 1, 2, 3, 4, 5]
 
-// Range with default from parameter
-const simple = await collect(range({ to: 3 }));
-console.log(simple); // [0, 1, 2, 3]
-
-// Infinite range (be careful with collect()!)
-const infinite = range({ from: 10 });
-const first5 = await collect(take(infinite, 5));
-console.log(first5); // [10, 11, 12, 13, 14]
-
-// Chain multiple operations
-const processed = await collect(
-  take(
-    map(
-      drop(data, 1), 
-      x => x * 2
-    ), 
-    2
-  )
-);
-console.log(processed); // [4, 6] (dropped first, doubled, took 2)
-
 // Calculate sum directly
 const total = await sum([1, 2, 3, 4, 5]);
 console.log(total); // 15
-
-// Find minimum and maximum
-const minimum = await min([5, 2, 8, 1, 9]);
-console.log(minimum); // 1
-
-const maximum = await max([5, 2, 8, 1, 9]);
-console.log(maximum); // 9
-
-// Combine with other operations
-const evenSum = await sum(filterMap(data, (n) => n % 2 === 0 ? n : None));
-console.log(evenSum); // 12 (sum of even numbers: 2 + 4)
-
-const evenMin = await min(filterMap(data, (n) => n % 2 === 0 ? n : None));
-console.log(evenMin); // 2 (smallest even number)
-
-// Cycle through values directly
-const cycledData = await collect(cycle([1, 2, 3], 2));
-console.log(cycledData); // [1, 2, 3, 1, 2, 3]
-
-// Zip two iterators
-const zipped = await collect(zip([1, 2, 3], ['a', 'b', 'c']));
-console.log(zipped); // [[1, 'a'], [2, 'b'], [3, 'c']]
-
-// Combine operations
-const combined = await collect(
-  map(
-    zip([1, 2, 3], [10, 20, 30]),
-    ([a, b]) => a + b
-  )
-);
-console.log(combined); // [11, 22, 33]
-
-// Use fold and reduce directly
-const sumFold = await fold([1, 2, 3, 4], 0, (acc, val) => acc + val);
-console.log(sumFold); // 10
-
-const sumReduce = await reduce([1, 2, 3, 4], (acc, val) => acc + val);
-console.log(sumReduce); // 10
-
-// Side effects with forEach
-const logged = [];
-await forEach([1, 2, 3], (val) => logged.push(val * 2));
-console.log(logged); // [2, 4, 6]
-
-// Combine cycle with other operations
-const repeatedAndDoubled = await collect(
-  map(
-    take(cycle(['A', 'B']), 5),
-    char => char.toLowerCase()
-  )
-);
-console.log(repeatedAndDoubled); // ['a', 'b', 'a', 'b', 'a']
 ```
 
 ### Core Methods
@@ -220,11 +121,6 @@ const asyncDoubled = await iterup([1, 2, 3])
     return n * 2;
   })
   .collect(); // [2, 4, 6]
-
-// With index
-const indexed = await iterup(['a', 'b', 'c'])
-  .map((value, index) => `${index}: ${value}`)
-  .collect(); // ['0: a', '1: b', '2: c']
 ```
 
 #### `.flatMap(fn)`
@@ -241,21 +137,13 @@ const flattened = await iterup([1, 2, 3])
 const chars = await iterup(['hello', 'world'])
   .flatMap(word => word.split(''))
   .collect(); // ['h', 'e', 'l', 'l', 'o', 'w', 'o', 'r', 'l', 'd']
-
-// Async transformation
-const asyncFlattened = await iterup([1, 2])
-  .flatMap(async x => {
-    await new Promise(resolve => setTimeout(resolve, 10));
-    return [x, x + 10];
-  })
-  .collect(); // [1, 11, 2, 12]
 ```
 
 ### Utility Functions
 
 #### `range(options)`
 
-Creates an iterator that yields a sequence of numbers within a specified range. Provides a convenient way to generate numeric sequences without pre-allocating arrays. Both start and end points are inclusive.
+Creates an iterator that yields a sequence of numbers within a specified range. Both start and end points are inclusive.
 
 **Parameters:**
 - `options.from` - Starting number (inclusive, default: `0`)
@@ -268,52 +156,23 @@ import { range } from '@jhel/iterup'
 const basic = await range({ from: 0, to: 5 }).collect();
 console.log(basic); // [0, 1, 2, 3, 4, 5]
 
-// Range from 1 to 3
-const simple = await range({ from: 1, to: 3 }).collect();
-console.log(simple); // [1, 2, 3]
-
 // Infinite range (be careful with collect()!)
 const infinite = range({ from: 10 }); // 10, 11, 12, ...
 const first5 = await infinite.take(5).collect();
 console.log(first5); // [10, 11, 12, 13, 14]
-
-// Used with iterup() overload
-const shorthand = await iterup({ from: 0, to: 3 }).collect();
-console.log(shorthand); // [0, 1, 2, 3]
-
-// Using default from parameter (starts at 0)
-const defaultFrom = await range({ to: 4 }).collect();
-console.log(defaultFrom); // [0, 1, 2, 3, 4]
 
 // Combine with other operations
 const evenSquares = await range({ from: 0, to: 10 })
   .filterMap(n => n % 2 === 0 ? n * n : None)
   .collect();
 console.log(evenSquares); // [0, 4, 16, 36, 64, 100]
-
-// Process in chunks
-const processInBatches = async () => {
-  const batchSize = 100;
-  let processed = 0;
-  
-  for (let start = 0; start < 1000; start += batchSize) {
-    const batch = await range({ 
-      from: start, 
-      to: start + batchSize 
-    }).collect();
-    
-    processed += await processBatch(batch);
-  }
-  
-  return processed;
-};
 ```
 
 ### Extension Methods
 
 #### `.filterMap(fn)`
 
-Combines filtering and mapping in a single efficient operation. Return `None` to filter out elements, or a value to transform and include them. Supports async transformation functions.
+Combines filtering and mapping in a single efficient operation. Return `None` to filter out elements, or a value to transform and include them.
 
 ```ts
 // Basic filter and map
@@ -323,49 +182,27 @@ const numbers = await iterup([1, 2, 3, 4, 5, 6])
     return None; // Filter out odd numbers
   })
   .collect(); // ["Even: 2", "Even: 4", "Even: 6"]
-
-// Async transformation
-const asyncFiltered = await iterup([1, 2, 3, 4])
-  .filterMap(async n => {
-    await new Promise(resolve => setTimeout(resolve, 10));
-    return n > 2 ? n * 2 : None;
-  })
-  .collect(); // [6, 8]
 ```
 
 #### `.findMap(fn)`
 
-Finds the first element that matches the predicate and maps it. Consumes the iterator until a match is found. Supports async transformation functions.
+Finds the first element that matches the predicate and maps it. Consumes the iterator until a match is found.
 
 ```ts
 // Find first even number
 const firstEven = await iterup([1, 3, 5, 2, 4])
   .findMap(n => n % 2 === 0 ? `First even: ${n}` : None);
 console.log(firstEven); // "First even: 2"
-
-// Async transformation
-const asyncFound = await iterup([1, 2, 3])
-  .findMap(async n => {
-    await new Promise(resolve => setTimeout(resolve, 10));
-    return n > 1 ? `Found: ${n}` : None;
-  });
-console.log(asyncFound); // "Found: 2"
 ```
 
 #### `.enumerate()`
 
-Creates an iterator that yields `[value, index]` tuples, similar to Python's `enumerate()`.
+Creates an iterator that yields `[value, index]` tuples.
 
 ```ts
 const letters = await iterup(['a', 'b', 'c'])
   .enumerate()
   .collect(); // [['a', 0], ['b', 1], ['c', 2]]
-
-// Useful for indexed operations
-const indexed = await iterup(['apple', 'banana', 'cherry'])
-  .enumerate()
-  .map(([fruit, i]) => `${i + 1}. ${fruit}`)
-  .collect(); // ["1. apple", "2. banana", "3. cherry"]
 ```
 
 #### `.take(count)`
@@ -376,12 +213,6 @@ Takes the first `count` elements from the iterator.
 const first3 = await iterup([1, 2, 3, 4, 5])
   .take(3)
   .collect(); // [1, 2, 3]
-
-// Useful for limiting results
-const limitedResults = await iterup(largeDataset)
-  .map(expensiveOperation)
-  .take(10)  // Only process first 10 items
-  .collect();
 ```
 
 #### `.drop(count)`
@@ -392,132 +223,59 @@ Skips the first `count` elements from the iterator.
 const without2 = await iterup([1, 2, 3, 4, 5])
   .drop(2)
   .collect(); // [3, 4, 5]
-
-// Skip header rows
-const dataRows = await iterup(csvLines)
-  .drop(1)  // Skip header
-  .map(parseCsvLine)
-  .collect();
 ```
 
 #### `.collect()` / `.toArray()`
 
-Materializes all values from the iterator into an array. This consumes the iterator and returns a Promise.
+Materializes all values from the iterator into an array.
 
 ```ts
 const result = await iterup([1, 2, 3])
   .map(n => n * 2)
   .collect(); // [2, 4, 6]
-
-// .toArray() is an alias for .collect()
-const same = await iterup([1, 2, 3])
-  .map(n => n * 2)
-  .toArray(); // [2, 4, 6]
 ```
 
 #### `.sum()` (Numeric Only)
 
-Calculates the sum of all numeric values in the iterator. This method is only available for Iterup instances that contain numbers and consumes the entire iterator.
+Calculates the sum of all numeric values in the iterator.
 
 ```ts
-// Sum an array of numbers
 const total = await iterup([1, 2, 3, 4, 5]).sum();
 console.log(total); // 15
 
-// Sum after filtering and mapping
+// Sum after filtering
 const evenSum = await iterup([1, 2, 3, 4, 5, 6])
   .filterMap(n => n % 2 === 0 ? n : None)
   .sum();
 console.log(evenSum); // 12 (2 + 4 + 6)
-
-// Sum a range
-const rangeSum = await iterup({ from: 1, to: 5 }).sum();
-console.log(rangeSum); // 15 (1 + 2 + 3 + 4 + 5)
-
-// Sum with transformations
-const squaredSum = await iterup([1, 2, 3])
-  .map(n => n * n)
-  .sum();
-console.log(squaredSum); // 14 (1² + 2² + 3²)
-
-// Only works with numeric iterators
-// iterup(['a', 'b', 'c']).sum(); // TypeScript error - not numeric
 ```
 
 #### `.min()` (Numeric Only)
 
-Finds the minimum value among all numeric values in the iterator. This method is only available for Iterup instances that contain numbers and consumes the entire iterator.
+Finds the minimum value among all numeric values in the iterator.
 
 ```ts
-// Find minimum in an array
 const minimum = await iterup([5, 2, 8, 1, 9]).min();
 console.log(minimum); // 1
-
-// Find minimum after filtering
-const minEven = await iterup([1, 2, 3, 4, 5, 6])
-  .filterMap(n => n % 2 === 0 ? n : None)
-  .min();
-console.log(minEven); // 2
-
-// Find minimum in a range
-const rangeMin = await iterup({ from: 10, to: 20 }).min();
-console.log(rangeMin); // 10
-
-// Find minimum after transformations
-const transformedMin = await iterup([1, 2, 3, 4])
-  .map(n => n * n)
-  .min();
-console.log(transformedMin); // 1 (1²)
-
-// Only works with numeric iterators
-// iterup(['a', 'b', 'c']).min(); // TypeScript error - not numeric
 ```
 
 #### `.max()` (Numeric Only)
 
-Finds the maximum value among all numeric values in the iterator. This method is only available for Iterup instances that contain numbers and consumes the entire iterator.
+Finds the maximum value among all numeric values in the iterator.
 
 ```ts
-// Find maximum in an array
 const maximum = await iterup([5, 2, 8, 1, 9]).max();
 console.log(maximum); // 9
-
-// Find maximum after filtering
-const maxEven = await iterup([1, 2, 3, 4, 5, 6])
-  .filterMap(n => n % 2 === 0 ? n : None)
-  .max();
-console.log(maxEven); // 6
-
-// Find maximum in a range
-const rangeMax = await iterup({ from: 10, to: 20 }).max();
-console.log(rangeMax); // 20
-
-// Find maximum after transformations
-const transformedMax = await iterup([1, 2, 3, 4])
-  .map(n => n * n)
-  .max();
-console.log(transformedMax); // 16 (4²)
-
-// Only works with numeric iterators
-// iterup(['a', 'b', 'c']).max(); // TypeScript error - not numeric
 ```
 
 #### `.zip(anotherIterator)`
 
-Combines the current iterator with another iterator element-wise, yielding pairs of values until one iterator is exhausted. The resulting iterator stops when the shorter of the two input iterators is exhausted.
+Combines the current iterator with another iterator element-wise, yielding pairs of values until one iterator is exhausted.
 
 ```ts
 // Zip two arrays
 const result = await iterup([1, 2, 3]).zip(['a', 'b', 'c']).collect();
 console.log(result); // [[1, 'a'], [2, 'b'], [3, 'c']]
-
-// Zip arrays of different lengths (stops at shortest)
-const uneven = await iterup([1, 2, 3, 4]).zip(['a', 'b']).collect();
-console.log(uneven); // [[1, 'a'], [2, 'b']]
-
-// Zip with ranges
-const withRange = await iterup(['A', 'B', 'C']).zip(iterup({ from: 1, to: 3 })).collect();
-console.log(withRange); // [['A', 1], ['B', 2], ['C', 3]]
 
 // Zip and transform
 const combined = await iterup([1, 2, 3])
@@ -525,26 +283,11 @@ const combined = await iterup([1, 2, 3])
   .map(([a, b]) => a + b)
   .collect();
 console.log(combined); // [11, 22, 33]
-
-// Common pattern: enumerate with custom start
-const customEnum = await iterup(['x', 'y', 'z'])
-  .zip(iterup({ from: 10 }))
-  .take(3)
-  .collect();
-console.log(customEnum); // [['x', 10], ['y', 11], ['z', 12]]
-
-// Zip multiple transformations
-const processed = await iterup([1, 2, 3])
-  .map(n => n * 2)
-  .zip(['a', 'b', 'c'])
-  .filterMap(([num, char]) => num > 2 ? `${char}${num}` : None)
-  .collect();
-console.log(processed); // ['a4', 'b6']
 ```
 
 #### `.fold(initialValue, fn)`
 
-Applies a function to each element and an accumulator, returning the final accumulated value. This is a fundamental operation for building custom aggregation functions.
+Applies a function to each element and an accumulator, returning the final accumulated value.
 
 ```ts
 // Sum using fold
@@ -552,33 +295,14 @@ const sum = await iterup([1, 2, 3, 4]).fold(0, (acc, val) => acc + val);
 console.log(sum); // 10
 
 // Build a string
-const sentence = await iterup(['Hello', 'world', '!'])
+const sentence = await iterup(['Hello', 'world'])
   .fold('', (acc, word) => acc === '' ? word : `${acc} ${word}`);
-console.log(sentence); // "Hello world !"
-
-// Count elements
-const count = await iterup([1, 2, 3, 4, 5]).fold(0, (acc, _) => acc + 1);
-console.log(count); // 5
-
-// Build an object from array
-const indexed = await iterup(['a', 'b', 'c'])
-  .enumerate()
-  .fold({}, (acc, [val, index]) => ({ ...acc, [index]: val }));
-console.log(indexed); // { 0: 'a', 1: 'b', 2: 'c' }
-
-// Complex aggregation
-const stats = await iterup([1, 2, 3, 4, 5])
-  .fold({ sum: 0, count: 0, max: 0 }, (acc, val) => ({
-    sum: acc.sum + val,
-    count: acc.count + 1,
-    max: Math.max(acc.max, val)
-  }));
-console.log(stats); // { sum: 15, count: 5, max: 5 }
+console.log(sentence); // "Hello world"
 ```
 
 #### `.reduce(fn)`
 
-Reduces the iterator to a single value using the first element as initial accumulator. Returns None if the iterator is empty.
+Reduces the iterator to a single value using the first element as initial accumulator.
 
 ```ts
 // Sum using reduce
@@ -588,27 +312,11 @@ console.log(sum); // 10
 // Find maximum
 const max = await iterup([5, 2, 8, 1, 9]).reduce((acc, val) => acc > val ? acc : val);
 console.log(max); // 9
-
-// Concatenate strings
-const combined = await iterup(['Hello', ' ', 'world']).reduce((acc, val) => acc + val);
-console.log(combined); // "Hello world"
-
-// Empty iterator returns None
-const empty = await iterup([]).reduce((acc, val) => acc + val);
-console.log(empty === None); // true
-
-// Single element returns that element
-const single = await iterup([42]).reduce((acc, val) => acc + val);
-console.log(single); // 42
-
-// Compare with fold - reduce doesn't need initial value
-const foldSum = await iterup([1, 2, 3]).fold(0, (acc, val) => acc + val); // 6
-const reduceSum = await iterup([1, 2, 3]).reduce((acc, val) => acc + val); // 6
 ```
 
 #### `.forEach(fn)`
 
-Executes a function for each element in the iterator, primarily for side effects. This method consumes the iterator but returns void.
+Executes a function for each element in the iterator, primarily for side effects.
 
 ```ts
 // Log each element
@@ -616,32 +324,11 @@ await iterup([1, 2, 3]).forEach((value) => {
   console.log(`Processing: ${value}`);
 });
 // Logs: "Processing: 1", "Processing: 2", "Processing: 3"
-
-// Update external state
-const results: string[] = [];
-await iterup(['a', 'b', 'c']).forEach((value) => {
-  results.push(value.toUpperCase());
-});
-console.log(results); // ['A', 'B', 'C']
-
-// Async side effects
-await iterup([1, 2, 3]).forEach(async (value) => {
-  await new Promise(resolve => setTimeout(resolve, 100));
-  console.log(`Delayed: ${value}`);
-});
-
-// Debugging in chains (note: forEach doesn't return an iterator)
-const results2 = [];
-await iterup([1, 2, 3, 4, 5])
-  .map(n => n * 2)
-  .filterMap(n => n > 5 ? n : None)
-  .forEach(n => results2.push(n)); // Collect for debugging
-console.log(results2); // [6, 8, 10]
 ```
 
 #### `.cycle(cycles?)`
 
-Repeats the values from the iterator for a specified number of cycles. The input iterator is fully consumed and cached, then the values are yielded repeatedly. Defaults to infinite cycles if no parameter is provided.
+Repeats the values from the iterator for a specified number of cycles.
 
 ```ts
 // Cycle through values 3 times
@@ -649,49 +336,11 @@ const result = await iterup([1, 2, 3])
   .cycle(3)
   .collect();
 console.log(result); // [1, 2, 3, 1, 2, 3, 1, 2, 3]
-
-// Infinite cycling (use with take() to avoid infinite loops)
-const infinite = await iterup(['A', 'B', 'C'])
-  .cycle()
-  .take(7)
-  .collect();
-console.log(infinite); // ['A', 'B', 'C', 'A', 'B', 'C', 'A']
-
-// Cycle with transformations
-const pattern = await iterup([1, 2])
-  .cycle(2)
-  .map(n => n * 10)
-  .collect();
-console.log(pattern); // [10, 20, 10, 20]
-
-// Use with ranges
-const repeatedRange = await iterup({ from: 1, to: 3 })
-  .cycle(2)
-  .collect();
-console.log(repeatedRange); // [1, 2, 3, 1, 2, 3]
-
-// Common pattern: cycling through a repeating sequence
-const colors = ['red', 'green', 'blue'];
-const colorAssignments = await iterup(['item1', 'item2', 'item3', 'item4', 'item5'])
-  .enumerate()
-  .map(([item, index]) => ({
-    item,
-    color: colors[index % colors.length] // Manual cycling
-  }))
-  .collect();
-
-// Or using the cycle method for cleaner code
-const items = ['item1', 'item2', 'item3', 'item4', 'item5'];
-const colorCycle = await iterup(colors).cycle().take(items.length).collect();
-const assignments = items.map((item, index) => ({
-  item,
-  color: colorCycle[index]
-}));
 ```
 
 ### The Option Type
 
-The `Option<T>` type represents a value that can either be present (`T`) or absent (`None`). It's used in methods like `filterMap` and `findMap` to indicate whether a value should be included in the result.
+The `Option<T>` type represents a value that can either be present (`T`) or absent (`None`). Used in methods like `filterMap` and `findMap`.
 
 ```ts
 import { None, type Option } from '@jhel/iterup'
@@ -706,236 +355,6 @@ const results = await iterup([-2, -1, 0, 1, 2])
   .filterMap(processNumber)
   .collect();
 // ["Negative: -2", "Negative: -1", "Positive: 1", "Positive: 2"]
-```
-
-## Advanced Examples
-
-### Processing Large Datasets with Async Operations
-
-```ts
-// Efficiently process large datasets with async operations
-const processLargeDataset = async (data: number[]) => {
-  return await iterup(data)
-    .filterMap(async n => {
-      if (n <= 0) return None;
-      // Simulate async API call
-      const result = await fetch(`/api/process/${n}`);
-      return result.ok ? await result.text() : None;
-    })
-    .take(10)                                    // Limit to first 10 successful results
-    .enumerate()                                 // Add indices
-    .map(([value, i]) => `${i}: ${value}`)      // Format with index
-    .collect();
-};
-```
-
-### Working with Async Data Sources
-
-```ts
-// Reading from async sources like streams or APIs
-async function* fetchPages() {
-  let page = 1;
-  while (page <= 5) {
-    const response = await fetch(`/api/data?page=${page}`);
-    const data = await response.json();
-    for (const item of data.items) {
-      yield item;
-    }
-    page++;
-  }
-}
-
-const processedData = await iterup(fetchPages())
-  .filterMap(async item => {
-    // Validate and transform each item
-    if (!item.valid) return None;
-    return await processItem(item);
-  })
-  .collect();
-```
-
-### Generating Data with Ranges
-
-```ts
-// Process numeric sequences without creating large arrays
-const processSequence = async () => {
-  // Generate and process a large range efficiently
-  const result = await iterup({ from: 0, to: 999999 })
-    .filterMap(n => n % 1000 === 0 ? n : None)    // Only process every 1000th number
-    .map(async n => {
-      // Simulate async processing
-      const response = await fetch(`/api/checkpoint/${n}`);
-      return { checkpoint: n, status: response.status };
-    })
-    .take(10)                                      // Only need first 10 checkpoints
-    .collect();
-  
-  return result; // Memory efficient - never created a million-element array
-};
-
-// Batch processing with ranges
-const processBatches = async (totalItems: number, batchSize: number) => {
-  const results = [];
-  
-  // Process data in batches using ranges
-  for (let start = 0; start < totalItems; start += batchSize) {
-    const batch = await iterup({ from: start, to: start + batchSize })
-      .map(async id => await fetchItem(id))
-      .filterMap(item => item.isValid ? item : None)
-      .collect();
-    
-    results.push(...batch);
-    
-    // Optional: Add delay between batches
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  return results;
-};
-
-// Infinite sequences with controlled consumption
-const infiniteProcessor = async () => {
-  // Generate infinite sequence but only process what we need
-  const processor = iterup({ from: 1 })  // 1, 2, 3, 4, ...
-    .filterMap(async n => {
-      const data = await fetchData(n);
-      return data.isComplete ? data : None;
-    });
-  
-  // Consume until we have enough results
-  const results = [];
-  for await (const item of processor) {
-    results.push(item);
-    if (results.length >= 5) break;  // Stop when we have enough
-  }
-  
-  return results;
-};
-```
-
-### Mixed Sync/Async Transformations
-
-```ts
-interface User {
-  id: number;
-  name: string;
-  email?: string;
-}
-
-const users: User[] = [
-  { id: 1, name: "Alice", email: "alice@example.com" },
-  { id: 2, name: "Bob" },
-  { id: 3, name: "Charlie", email: "charlie@example.com" },
-];
-
-// Mix sync and async operations
-const enrichedUsers = await iterup(users)
-  .filterMap(user => user.email ? user : None)          // Sync: filter users with email
-  .map(async user => {                                  // Async: enrich with profile data
-    const profile = await fetchUserProfile(user.id);
-    return { ...user, profile };
-  })
-  .filterMap(async enrichedUser => {                    // Async: validate and format
-    const isValid = await validateUser(enrichedUser);
-    return isValid ? formatUser(enrichedUser) : None;
-  })
-  .collect();
-
-// Calculate metrics on numeric data
-const scores = [85, 92, 78, 96, 88, 91];
-const totalScore = await iterup(scores).sum();
-const minScore = await iterup(scores).min();
-const maxScore = await iterup(scores).max();
-const highScoresSum = await iterup(scores)
-  .filterMap(score => score >= 90 ? score : None)
-  .sum(); // Sum only scores >= 90
-const topScore = await iterup(scores)
-  .filterMap(score => score >= 90 ? score : None)
-  .max(); // Highest score >= 90
-
-// Create repeating patterns for data processing
-const statusPattern = ['pending', 'processing', 'complete'];
-const taskStatuses = await iterup(['task1', 'task2', 'task3', 'task4', 'task5', 'task6'])
-  .enumerate()
-  .map(([task, index], _) => {
-    const statusCycle = iterup(statusPattern).cycle();
-    return statusCycle.drop(index % statusPattern.length).take(1);
-  })
-  .flatMap(statusIter => statusIter)
-  .collect();
-// Creates cycling status pattern for tasks
-
-// Zip data for parallel processing
-const tasks = ['task1', 'task2', 'task3'];
-const priorities = ['high', 'medium', 'low'];
-const taskList = await iterup(tasks)
-  .zip(priorities)
-  .map(([task, priority]) => ({ task, priority }))
-  .collect();
-// Creates: [{ task: 'task1', priority: 'high' }, ...]
-
-// Complex aggregation with fold
-const analytics = await iterup(scores)
-  .fold({ total: 0, count: 0, passed: 0 }, (acc, score) => ({
-    total: acc.total + score,
-    count: acc.count + 1,
-    passed: acc.passed + (score >= 80 ? 1 : 0)
-  }));
-const average = analytics.total / analytics.count;
-const passRate = analytics.passed / analytics.count;
-
-// Processing with side effects
-await iterup(scores)
-  .filterMap(score => score >= 90 ? score : None)
-  .forEach(score => console.log(`Excellent score: ${score}`));
-```
-
-### Lazy Evaluation Benefits
-
-```ts
-// The power of lazy evaluation with async operations
-const processOnlyNeeded = async () => {
-  let apiCallCount = 0;
-  
-  const result = await iterup([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    .map(async n => {
-      apiCallCount++;
-      // Expensive async operation
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return await fetch(`/api/process/${n}`).then(r => r.json());
-    })
-    .filterMap(data => data.valid ? data.result : None)
-    .take(3)  // Only need first 3 valid results
-    .collect();
-
-  // Due to lazy evaluation + take(3), API is called only as needed
-  console.log(`API calls made: ${apiCallCount}`); // Likely 3-5, not 10
-  return result;
-};
-```
-
-### Performance Comparison
-
-```ts
-// Traditional approach - creates intermediate arrays and blocks on each operation
-const traditionalApproach = async (data: number[]) => {
-  const step1 = await Promise.all(data.map(async n => {
-    return await expensiveAsyncOperation(n);  // All operations run at once
-  }));
-  
-  const step2 = step1.filter(n => n > 10);   // Creates intermediate array
-  const step3 = step2.map(n => n * 2);       // Creates another intermediate array
-  return step3.slice(0, 5);                  // Finally take what we need
-};
-
-// Iterup approach - lazy evaluation with controlled concurrency
-const iterupApproach = async (data: number[]) => {
-  return await iterup(data)
-    .map(async n => await expensiveAsyncOperation(n))  // Processed one by one
-    .filterMap(n => n > 10 ? n * 2 : None)             // No intermediate arrays
-    .take(5)                                           // Stop early when we have enough
-    .collect();                                        // Single array creation
-};
 ```
 
 ## Error Handling
@@ -953,26 +372,11 @@ const safeProcess = await iterup([1, 2, 3, 4, 5])
     }
   })
   .collect();
-
-// Or use a helper for error handling
-const withErrorHandling = <T, R>(
-  fn: (value: T, index: number) => Promise<R>
-) => async (value: T, index: number): Promise<Option<R>> => {
-  try {
-    return await fn(value, index);
-  } catch {
-    return None;
-  }
-};
-
-const safeResults = await iterup(data)
-  .filterMap(withErrorHandling(async n => await riskyOperation(n)))
-  .collect();
 ```
 
 ## Type Safety
 
-Iterup is built with TypeScript-first design, providing excellent type inference and safety:
+Iterup provides full TypeScript support with excellent type inference:
 
 ```ts
 const numbers = iterup([1, 2, 3, 4, 5]);
@@ -983,16 +387,6 @@ const strings = numbers.map(n => n.toString());
 
 const filtered = numbers.filterMap(n => n > 3 ? `Big: ${n}` : None);
 // Type: Iterup<string>
-
-// Async transformations are properly typed
-const asyncResults = numbers.map(async n => {
-  const result = await someAsyncOperation(n);
-  return result; // TypeScript knows this is Promise<SomeType>
-});
-// Type: Iterup<SomeType>
-
-const collected = await asyncResults.collect();
-// Type: SomeType[]
 ```
 
 ## Development

@@ -9,8 +9,6 @@ import { isAsyncIterator, isIterable, isIterator } from "./utils";
  *
  * @example
  * ```ts
- * import { None } from '@jhel/iterup';
- *
  * const result = someValue > 10 ? someValue * 2 : None;
  * ```
  */
@@ -155,11 +153,11 @@ export function fromAsyncIterator<Value>(
 }
 
 /**
- * Creates an Iterup instance from any iterable (arrays, sets, etc.) by
- * converting it to an async generator and then wrapping it.
+ * Creates an Iterup instance from any iterable by converting it to an
+ * async generator and then wrapping it.
  *
  * @template Value - The type of values in the iterable
- * @param array - The iterable to wrap (despite the name, works with any iterable)
+ * @param array - The iterable to wrap
  * @returns An enhanced Iterup instance
  *
  * @internal This function is used internally by the main iterup function
@@ -194,30 +192,17 @@ function fromIterable<Value>(array: Iterable<Value>): Iterup<Value> {
  * // From array
  * const fromArray = iterup([1, 2, 3, 4]);
  *
- * // From range argument (new overload)
+ * // From range argument
  * const fromRange = iterup({ from: 0, to: 5 });
  * const rangeResult = await fromRange.collect();
- * // result: [0, 1, 2, 3, 4]
+ * // result: [0, 1, 2, 3, 4, 5]
  *
- * // From async generator
- * async function* asyncGen() {
- *   yield 1; yield 2; yield 3;
- * }
- * const fromAsync = iterup(asyncGen());
- *
- * // Chain operations with range
+ * // Chain operations
  * const result = await iterup({ from: 1, to: 6 })
  *   .map(x => x * 2)
  *   .filter(x => x > 5)
  *   .collect();
- * // result: [6, 8, 10]
- *
- * // Chain operations with array
- * const arrayResult = await iterup([1, 2, 3, 4, 5])
- *   .map(x => x * 2)
- *   .filter(x => x > 5)
- *   .collect();
- * // result: [6, 8, 10]
+ * // result: [6, 8, 10, 12]
  * ```
  */
 export function iterup(range: RangeArgument): Iterup<number>;

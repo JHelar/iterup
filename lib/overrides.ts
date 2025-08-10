@@ -2,8 +2,7 @@
  * Override system for customizing default iterator behavior.
  *
  * This module provides a framework for overriding specific methods
- * on iterator instances. Currently empty but designed to be extensible
- * for future customization needs.
+ * on iterator instances. Currently empty but extensible for future needs.
  */
 
 /**
@@ -24,7 +23,6 @@ export type OverrideFunctions<Value> = keyof Overrides<Value>;
 
 /**
  * Set containing the names of all functions that have overrides.
- * Used internally to determine whether to wrap function results
- * with iterup() in the proxy handler.
+ * Used internally to determine whether to wrap function results with iterup().
  */
 export const OverrideFunctions: Set<OverrideFunctions<{}>> = new Set();

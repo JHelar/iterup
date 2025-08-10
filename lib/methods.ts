@@ -1,21 +1,12 @@
-import {
-  BaseAsyncIterator,
-  BaseIterator,
-  fromAsyncIterator,
-  iterup,
-  None,
-  type Iterup,
-  type Option,
-} from "./core";
+import { BaseAsyncIterator, BaseIterator, None, type Option } from "./core";
 import { isAsyncIterator, isIterable, isIterator, unwrapResult } from "./utils";
 
 /**
- * Creates an iterator that yields pairs of [value, index] for each element.
- * The index starts at 0 and increments with each iteration.
+ * Yields pairs [value, index] for each element. Index starts at 0.
  *
- * @template Value - The type of values in the input iterator
- * @param iterator - The iterator to enumerate
- * @returns An Iterup yielding [value, index] tuples
+ * @template Value
+ * @param iterator - Source iterator
+ * @returns Async iterator of [value, index]
  *
  * @example
  * ```ts
@@ -37,7 +28,7 @@ export async function* enumerate<Value>(
 
 /**
  * Finds the first value for which the provided function returns a non-None value.
- * Similar to Array.find() but with transformation capabilities.
+ * Returns the transformed value if found, undefined if none match.
  *
  * @template FilterValue - The type of the transformed value
  * @template Value - The type of values in the input iterator
@@ -76,8 +67,8 @@ export async function findMap<FilterValue, Value>(
  * @template FilterValue - The type of the transformed values
  * @template Value - The type of values in the input iterator
  * @param iterator - The iterator to filter and transform
- * @param f - Function that transforms values, returning None to filter out
- * @returns An Iterup with transformed and filtered values
+ * @param f - Function that transforms values; return None to filter out (async supported)
+ * @returns Async iterator of transformed, non-None values
  *
  * @example
  * ```ts
@@ -105,13 +96,13 @@ export async function* filterMap<FilterValue, Value>(
 
 /**
  * Transforms each value in the iterator using the provided function.
- * Similar to Array.map() but for iterators and supports async functions.
+ * Supports async transformation functions.
  *
  * @template Value - The type of values in the input iterator
  * @template MapValue - The type of values after transformation
  * @param iterator - The iterator to transform
- * @param f - Function to transform each value
- * @returns An Iterup with transformed values
+ * @param f - Function to transform each value (async supported)
+ * @returns Async iterator of transformed values
  *
  * @example
  * ```ts
@@ -137,13 +128,13 @@ export async function* map<Value, MapValue>(
 
 /**
  * Transforms each value into an iterator and flattens the results.
- * Similar to Array.flatMap() but for iterators and supports async functions.
+ * Supports async transformation functions.
  *
  * @template Value - The type of values in the input iterator
  * @template MapValue - The type of values in the resulting flattened iterator
  * @param iterator - The iterator to transform and flatten
- * @param f - Function that transforms each value into an iterator
- * @returns An Iterup with flattened transformed values
+ * @param f - Function that transforms each value into an iterator (async supported)
+ * @returns Async iterator of flattened transformed values
  *
  * @example
  * ```ts
@@ -169,13 +160,13 @@ export async function* flatMap<Value, MapValue>(
 }
 
 /**
- * Skips the first n values from the iterator and returns the rest.
- * If count is 0 or negative, returns the original iterator unchanged.
+ * Skips the first n values from the iterator and yields the rest.
+ * If count <= 0, yields the original sequence unchanged.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator to drop values from
  * @param count - Number of values to skip from the beginning
- * @returns An Iterup with the first count values skipped
+ * @returns Async iterator with the first count values skipped
  *
  * @example
  * ```ts
@@ -203,12 +194,12 @@ export async function* drop<Value>(
 
 /**
  * Takes only the first n values from the iterator and stops.
- * If count is 0 or negative, returns an empty iterator.
+ * If count <= 0, yields an empty sequence.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator to take values from
  * @param count - Maximum number of values to take
- * @returns An Iterup with at most count values
+ * @returns Async iterator with at most count values
  *
  * @example
  * ```ts
@@ -234,11 +225,11 @@ export async function* take<Value>(
 
 /**
  * Finds the first value that satisfies the predicate function.
- * Similar to Array.find() but for iterators and supports async predicates.
+ * Supports async predicates.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator to search through
- * @param f - Predicate function to test each value
+ * @param f - Predicate function to test each value (async supported)
  * @returns Promise resolving to the first matching value or undefined
  *
  * @example
@@ -267,18 +258,12 @@ export async function filter<Value>(
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator to collect values from
- * @returns Promise resolving to an array containing all values
+ * @returns Promise resolving to an array containing all yielded values
  *
  * @example
  * ```ts
  * const result = await collect(iterup([1, 2, 3]));
  * // result: [1, 2, 3]
- *
- * // Often used at the end of a chain
- * const processed = await iterup([1, 2, 3, 4, 5])
- *   .map(x => x * 2)
- *   .filter(x => x > 5)
- *   .collect();
  * ```
  */
 export async function collect<Value>(
@@ -307,13 +292,12 @@ export type RangeArgument = {
 
 /**
  * Creates an iterator that yields a sequence of numbers within a specified range.
- * Provides a convenient way to generate numeric sequences without pre-allocating arrays.
  * Both start and end points are inclusive.
  *
- * @param options - Configuration object specifying the range parameters
+ * @param options - Range parameters
  * @param options.from - Starting number (inclusive, default: 0)
  * @param options.to - Ending number (inclusive, default: Number.MAX_SAFE_INTEGER)
- * @returns An Iterup yielding numbers in the specified range
+ * @returns Async iterator yielding numbers in the specified range
  *
  * @example
  * ```ts
@@ -321,22 +305,10 @@ export type RangeArgument = {
  * const basic = await range({ from: 0, to: 5 }).collect();
  * // result: [0, 1, 2, 3, 4, 5]
  *
- * // Range from 1 to 3 (inclusive)
- * const simple = await range({ from: 1, to: 3 }).collect();
- * // result: [1, 2, 3]
- *
- * // Range starting from 0 (using default from)
- * const fromZero = await range({ to: 3 }).collect();
- * // result: [0, 1, 2, 3]
- *
- * // Infinite range (be careful with collect()!)
- * const infinite = range({ from: 10 }); // 10, 11, 12, ...
+ * // Infinite range (use with take() to avoid infinite loops)
+ * const infinite = range({ from: 10 });
  * const first5 = await infinite.take(5).collect();
  * // result: [10, 11, 12, 13, 14]
- *
- * // Used with iterup() overload
- * const shorthand = await iterup({ from: 0, to: 3 }).collect();
- * // result: [0, 1, 2, 3]
  * ```
  */
 export async function* range({
@@ -354,34 +326,17 @@ export async function* range({
 
 /**
  * Calculates the sum of all numeric values in the iterator.
- * This method is only available for Iterup instances that contain numbers.
+ * This method is only available for numeric iterators.
  *
  * @template Value - The numeric type of values in the iterator (must extend number)
  * @param iterator - The iterator containing numeric values to sum
- * @returns Promise resolving to the total sum of all values
+ * @returns Promise resolving to the total sum
  * @throws {TypeError} If the iterator contains non-numeric values
  *
  * @example
  * ```ts
- * // Sum an array of numbers
  * const total = await iterup([1, 2, 3, 4, 5]).sum();
  * // result: 15
- *
- * // Sum after filtering and mapping
- * const evenSum = await iterup([1, 2, 3, 4, 5, 6])
- *   .filterMap(n => n % 2 === 0 ? n : None)
- *   .sum();
- * // result: 12 (2 + 4 + 6)
- *
- * // Sum a range
- * const rangeSum = await iterup({ from: 1, to: 6 }).sum();
- * // result: 15 (1 + 2 + 3 + 4 + 5)
- *
- * // Sum with transformations
- * const squaredSum = await iterup([1, 2, 3])
- *   .map(n => n * n)
- *   .sum();
- * // result: 14 (1² + 2² + 3²)
  * ```
  */
 export async function sum<Value extends number>(
@@ -397,7 +352,7 @@ export async function sum<Value extends number>(
 
 /**
  * Finds the minimum value among all numeric values in the iterator.
- * This method is only available for Iterup instances that contain numbers.
+ * This method is only available for numeric iterators.
  *
  * @template Value - The numeric type of values in the iterator (must extend number)
  * @param iterator - The iterator containing numeric values to compare
@@ -406,31 +361,8 @@ export async function sum<Value extends number>(
  *
  * @example
  * ```ts
- * // Find minimum in an array
  * const minimum = await iterup([5, 2, 8, 1, 9]).min();
  * // result: 1
- *
- * // Find minimum after filtering
- * const minEven = await iterup([1, 2, 3, 4, 5, 6])
- *   .filterMap(n => n % 2 === 0 ? n : None)
- *   .min();
- * // result: 2
- *
- * // Find minimum in a range
- * const rangeMin = await iterup({ from: 10, to: 20 }).min();
- * // result: 10
- *
- * // Find minimum after transformations
- * const transformedMin = await iterup([1, 2, 3, 4])
- *   .map(n => n * n)
- *   .min();
- * // result: 1 (1²)
- *
- * // Combine with other operations
- * const processedMin = await iterup({ from: 1, to: 10 })
- *   .filterMap(n => n % 3 === 0 ? n * 2 : None)
- *   .min();
- * // result: 6 (3 * 2, smallest multiple of 3 doubled)
  * ```
  */
 export async function min<Value extends number>(
@@ -447,7 +379,7 @@ export async function min<Value extends number>(
 
 /**
  * Finds the maximum value among all numeric values in the iterator.
- * This method is only available for Iterup instances that contain numbers.
+ * This method is only available for numeric iterators.
  *
  * @template Value - The numeric type of values in the iterator (must extend number)
  * @param iterator - The iterator containing numeric values to compare
@@ -456,31 +388,8 @@ export async function min<Value extends number>(
  *
  * @example
  * ```ts
- * // Find maximum in an array
  * const maximum = await iterup([5, 2, 8, 1, 9]).max();
  * // result: 9
- *
- * // Find maximum after filtering
- * const maxEven = await iterup([1, 2, 3, 4, 5, 6])
- *   .filterMap(n => n % 2 === 0 ? n : None)
- *   .max();
- * // result: 6
- *
- * // Find maximum in a range
- * const rangeMax = await iterup({ from: 10, to: 20 }).max();
- * // result: 20
- *
- * // Find maximum after transformations
- * const transformedMax = await iterup([1, 2, 3, 4])
- *   .map(n => n * n)
- *   .max();
- * // result: 16 (4²)
- *
- * // Combine with other operations
- * const processedMax = await iterup({ from: 1, to: 10 })
- *   .filterMap(n => n % 3 === 0 ? n * 2 : None)
- *   .max();
- * // result: 18 (9 * 2, largest multiple of 3 doubled)
  * ```
  */
 export async function max<Value extends number>(
@@ -497,13 +406,13 @@ export async function max<Value extends number>(
 
 /**
  * Repeats the values from the iterator for a specified number of cycles.
- * The input iterator is consumed and cached during the first cycle, then cached values are yielded
- * for subsequent cycles. This optimization avoids re-consuming the original iterator. Defaults to infinite cycles.
+ * The input is consumed and cached during the first cycle; subsequent cycles
+ * replay the cached values. Defaults to infinite cycles.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator whose values should be cycled
- * @param cycles - Number of times to repeat the sequence (default: Infinity for infinite cycling)
- * @returns An Iterup that yields the original values repeatedly
+ * @param cycles - Number of times to repeat the sequence (default: Infinity)
+ * @returns Async iterator that yields the original values repeatedly
  *
  * @example
  * ```ts
@@ -512,38 +421,6 @@ export async function max<Value extends number>(
  *   .cycle(3)
  *   .collect();
  * // result: [1, 2, 3, 1, 2, 3, 1, 2, 3]
- *
- * // Infinite cycling (use with take() to avoid infinite loops)
- * const infinite = await iterup(['A', 'B', 'C'])
- *   .cycle()
- *   .take(7)
- *   .collect();
- * // result: ['A', 'B', 'C', 'A', 'B', 'C', 'A']
- *
- * // Cycle with transformations
- * const pattern = await iterup([1, 2])
- *   .cycle(2)
- *   .map(n => n * 10)
- *   .collect();
- * // result: [10, 20, 10, 20]
- *
- * // Use with ranges
- * const repeatedRange = await iterup({ from: 1, to: 4 })
- *   .cycle(2)
- *   .collect();
- * // result: [1, 2, 3, 1, 2, 3]
- *
- * // Common pattern: cycling through options
- * const colors = ['red', 'green', 'blue'];
- * const colorCycle = iterup(colors).cycle();
- * const assignments = await iterup(['item1', 'item2', 'item3', 'item4', 'item5'])
- *   .enumerate()
- *   .map(async ([item, index]) => {
- *     const colorIterator = colorCycle.drop(index).take(1);
- *     const color = (await colorIterator.collect())[0];
- *     return { item, color };
- *   })
- *   .collect();
  * ```
  */
 export async function* cycle<Value>(
@@ -569,47 +446,19 @@ export async function* cycle<Value>(
 }
 
 /**
- * Combines two iterators element-wise, yielding pairs of values until one iterator is exhausted.
- * The resulting iterator will stop when the shorter of the two input iterators is exhausted.
+ * Combines two iterators element-wise, yielding pairs until one is exhausted.
+ * The resulting iterator stops when the shorter of the two inputs completes.
  *
  * @template Value - The type of values in the first iterator
  * @template AnotherValue - The type of values in the second iterator
  * @param iterator - The first iterator to zip
  * @param anotherIterator - The second iterator to zip
- * @returns An Iterup yielding [Value, AnotherValue] tuples
+ * @returns Async iterator of [Value, AnotherValue]
  *
  * @example
  * ```ts
- * // Zip two arrays
  * const result = await zip([1, 2, 3], ['a', 'b', 'c']).collect();
  * // result: [[1, 'a'], [2, 'b'], [3, 'c']]
- *
- * // Zip arrays of different lengths (stops at shortest)
- * const uneven = await zip([1, 2, 3, 4], ['a', 'b']).collect();
- * // result: [[1, 'a'], [2, 'b']]
- *
- * // Zip with ranges
- * const withRange = await zip(['A', 'B', 'C'], iterup({ from: 1, to: 3 })).collect();
- * // result: [['A', 1], ['B', 2], ['C', 3]]
- *
- * // Zip and transform
- * const combined = await zip([1, 2, 3], [10, 20, 30])
- *   .map(([a, b]) => a + b)
- *   .collect();
- * // result: [11, 22, 33]
- *
- * // Common pattern: enumerate with custom start
- * const customEnum = await zip(['x', 'y', 'z'], iterup({ from: 10 }))
- *   .take(3)
- *   .collect();
- * // result: [['x', 10], ['y', 11], ['z', 12]]
- *
- * // Zip with async iterators
- * async function* asyncNumbers() {
- *   for (let i = 1; i <= 3; i++) yield i;
- * }
- * const asyncZip = await zip(['a', 'b', 'c'], asyncNumbers()).collect();
- * // result: [['a', 1], ['b', 2], ['c', 3]]
  * ```
  */
 export async function* zip<Value, AnotherValue>(
@@ -642,9 +491,8 @@ export async function* zip<Value, AnotherValue>(
 }
 
 /**
- * Applies a function to each element of the iterator and an accumulator, returning the final accumulated value.
- * This is a fundamental operation for building other aggregation functions. The accumulator is updated
- * with each iteration using the provided function.
+ * Applies a function to each element and an accumulator, returning the final value.
+ * This is a fundamental operation for building other aggregation functions.
  *
  * @template Value - The type of values in the iterator
  * @template NewValue - The type of the accumulator and return value
@@ -660,28 +508,10 @@ export async function* zip<Value, AnotherValue>(
  * // result: 10
  *
  * // Build a string
- * const sentence = await fold(['Hello', 'world', '!'], '', (acc, word) =>
+ * const sentence = await fold(['Hello', 'world'], '', (acc, word) =>
  *   acc === '' ? word : `${acc} ${word}`
  * );
- * // result: "Hello world !"
- *
- * // Count elements
- * const count = await fold([1, 2, 3, 4, 5], 0, (acc, _) => acc + 1);
- * // result: 5
- *
- * // Build an object
- * const indexed = await fold(['a', 'b', 'c'], {}, (acc, val, index) => ({
- *   ...acc,
- *   [index]: val
- * }));
- * // result: { 0: 'a', 1: 'b', 2: 'c' }
- *
- * // Async accumulation
- * const asyncSum = await fold([1, 2, 3], 0, async (acc, val) => {
- *   await new Promise(resolve => setTimeout(resolve, 10));
- *   return acc + val;
- * });
- * // result: 6
+ * // result: "Hello world"
  * ```
  */
 export async function fold<Value, NewValue>(
@@ -700,12 +530,12 @@ export async function fold<Value, NewValue>(
 /**
  * Reduces the iterator to a single value using the provided function.
  * Unlike fold, reduce uses the first element as the initial accumulator value.
- * Returns None if the iterator is empty.
+ * Returns undefined if the iterator is empty.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator to reduce
  * @param f - Function that takes (accumulator, value) and returns the new accumulator
- * @returns Promise resolving to the reduced value or None if iterator is empty
+ * @returns Promise resolving to the reduced value or undefined if empty
  *
  * @example
  * ```ts
@@ -716,25 +546,6 @@ export async function fold<Value, NewValue>(
  * // Find maximum
  * const max = await reduce([5, 2, 8, 1, 9], (acc, val) => acc > val ? acc : val);
  * // result: 9
- *
- * // Concatenate strings
- * const combined = await reduce(['Hello', ' ', 'world'], (acc, val) => acc + val);
- * // result: "Hello world"
- *
- * // Empty iterator returns undefined
- * const empty = await reduce([], (acc, val) => acc + val);
- * // result: undefined
- *
- * // Single element returns that element
- * const single = await reduce([42], (acc, val) => acc + val);
- * // result: 42
- *
- * // Async reduction
- * const asyncMax = await reduce([1, 2, 3], async (acc, val) => {
- *   await new Promise(resolve => setTimeout(resolve, 10));
- *   return Math.max(acc, val);
- * });
- * // result: 3
  * ```
  */
 export async function reduce<Value>(
@@ -757,13 +568,12 @@ export async function reduce<Value>(
 
 /**
  * Executes a function for each element in the iterator, primarily for side effects.
- * This method consumes the entire iterator but returns void. Useful for logging,
- * updating external state, or other side-effect operations.
+ * This consumes the entire iterator and returns void.
  *
  * @template Value - The type of values in the iterator
  * @param iterator - The iterator to iterate over
- * @param f - Function to execute for each value (can be async)
- * @returns Promise that resolves when all elements have been processed
+ * @param f - Function to execute for each value (can be async; not awaited)
+ * @returns Promise that resolves when all elements have been iterated
  *
  * @example
  * ```ts
@@ -772,34 +582,14 @@ export async function reduce<Value>(
  *   console.log(`Processing: ${value}`);
  * });
  * // Logs: "Processing: 1", "Processing: 2", "Processing: 3"
- *
- * // Update external array
- * const results: string[] = [];
- * await forEach(['a', 'b', 'c'], (value) => {
- *   results.push(value.toUpperCase());
- * });
- * // results: ['A', 'B', 'C']
- *
- * // Async side effects
- * await forEach([1, 2, 3], async (value) => {
- *   await new Promise(resolve => setTimeout(resolve, 100));
- *   console.log(`Delayed: ${value}`);
- * });
- *
- * // Use with chaining for debugging
- * const result = await iterup([1, 2, 3, 4, 5])
- *   .map(n => n * 2)
- *   .filterMap(n => n > 5 ? n : None)
- *   .forEach(n => console.log(`Filtered: ${n}`)) // Side effect
- *   .collect();
  * ```
  */
 export async function forEach<Value>(
   iterator: BaseIterator<Value>,
   f: (value: Value) => void | Promise<void>
 ): Promise<void> {
-  await fold(iterator, undefined, (_, value) => {
-    f(value);
+  await fold(iterator, undefined, async (_, value) => {
+    await f(value);
     return undefined;
   });
 }
