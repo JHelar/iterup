@@ -30,4 +30,10 @@ export {
   min,
   max,
   cycle,
+  zip,
+  filter,
+  RangeArgument,
+  fold,
+  forEach,
+  reduce,
 } from "./methods";
